@@ -10,7 +10,7 @@
  * @addtogroup  driver_periph
  * @{
  *
- * @file        cpuid.c
+ * @file
  * @brief       Low-level CPUID driver implementation
  *
  * @author      Troels Hoffmeyer <troels.d.hoffmeyer@gmail.com>
@@ -18,7 +18,6 @@
 
 #include <string.h>
 
-#include "cpu-conf.h"
 #include "periph/cpuid.h"
 
 #define SAMD21_CPUID_WORD0 (*(volatile uint32_t *)0x0080A00C)

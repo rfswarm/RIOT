@@ -13,6 +13,11 @@ RIOTBOARD := $(abspath $(RIOTBOARD))
 RIOTPROJECT ?= $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
 RIOTPROJECT := $(abspath $(RIOTPROJECT))
 
+# Include Docker settings near the top because we need to build the environment
+# command line before some of the variable origins are overwritten below when
+# using abspath, strip etc.
+include $(RIOTBASE)/Makefile.docker
+
 # Path to the current directory relative to the git root
 BUILDRELPATH ?= $(shell git rev-parse --show-prefix)
 
@@ -37,6 +42,7 @@ ifeq (, ${JENKINS_URL})
   ifeq (0,  $(shell tput colors 2>&1 > /dev/null; echo $$?))
     COLOR_GREEN  := \033[1;32m
     COLOR_RED    := \033[1;31m
+    COLOR_YELLOW := \033[1;33m
     COLOR_PURPLE := \033[1;35m
     COLOR_RESET  := \033[0m
     ifeq ($(OS),Darwin)
@@ -125,7 +131,8 @@ CFLAGS += -DCPU_$(CPUDEF)=\"$(CPU)\" -DRIOT_CPU=CPU_$(CPUDEF)
 CFLAGS += -DMCU_$(MCUDEF)=\"$(MCU)\" -DRIOT_MCU=MCU_$(MCUDEF)
 
 # OSX fails to create empty archives. Provide a wrapper to catch that error.
-ifneq (0, $(shell mkdir -p $(BINDIR); $(AR) rc $(BINDIR)empty-archive.a 2> /dev/null; echo $$?))
+ifneq (0, $(shell mkdir -p $(BINDIR); $(AR) rc $(BINDIR)empty-archive.a 2> /dev/null; \
+            echo $$?; rm -f $(BINDIR)empty-archive.a 2>&1 > /dev/null))
 	AR := $(RIOTBASE)/dist/ar-wrapper $(AR)
 endif
 
@@ -146,7 +153,12 @@ ifeq ($(origin RIOT_VERSION), undefined)
     RIOT_VERSION := "UNKNOWN (builddir: $(RIOTBASE))"
   endif
 endif
+
+ifneq (,$(RIOT_VERSION_OVERRIDE))
+export CFLAGS += -DRIOT_VERSION=\"$(RIOT_VERSION_OVERRIDE)\"
+else
 export CFLAGS += -DRIOT_VERSION=\"$(RIOT_VERSION)\"
+endif
 
 # the binaries to link
 BASELIBS += $(BINDIR)$(BOARD)_base.a
@@ -159,7 +171,7 @@ BASELIBS += $(USEPKG:%=${BINDIR}%.a)
 ELFFILE ?= $(BINDIR)$(APPLICATION).elf
 HEXFILE ?= $(ELFFILE:.elf=.hex)
 
-# variables used to complie and link c++
+# variables used to compile and link c++
 CPPMIX ?= $(if $(wildcard *.cpp),1,)
 
 # We assume $(LINK) to be gcc-like. Use `LINKFLAGPREFIX :=` for ld-like linker options.
@@ -274,35 +286,15 @@ objdump:
 		exit 1; }
 	$(PREFIX)objdump -S -D -h $(ELFFILE) | less
 
-export DOCKER_IMAGE ?= riot/riotbuild:latest
-export DOCKER_BUILD_ROOT ?= /data/riotbuild
-export DOCKER_FLAGS ?= --rm
-# Default target for building inside a Docker container
-export DOCKER_MAKECMDGOALS ?= all
-# This will execute `make $(DOCKER_MAKECMDGOALS)` inside a Docker container.
-# We do not push the regular $(MAKECMDGOALS) to the container's make command in
-# order to only perform building inside the container and defer executing any
-# extra commands such as flashing or debugging until after leaving the
-# container.
-# The `flash`, `term`, `debugserver` etc. targets usually require access to
-# hardware which may not be reachable from inside the container.
-..in-docker-container:
-	@$(COLOR_ECHO) '${COLOR_GREEN}Launching build container using image "$(DOCKER_IMAGE)".${COLOR_RESET}'
-	docker run $(DOCKER_FLAGS) -i -t -u "$$(id -u)" \
-	    -v '$(RIOTBASE):$(DOCKER_BUILD_ROOT)/riotbase' \
-	    -v '$(RIOTCPU):$(DOCKER_BUILD_ROOT)/riotcpu' \
-	    -v '$(RIOTBOARD):$(DOCKER_BUILD_ROOT)/riotboard' \
-	    -v '$(RIOTPROJECT):$(DOCKER_BUILD_ROOT)/riotproject' \
-	    -e 'RIOTBASE=$(DOCKER_BUILD_ROOT)/riotbase' \
-	    -e 'RIOTCPU=$(DOCKER_BUILD_ROOT)/riotcpu' \
-	    -e 'RIOTBOARD=$(DOCKER_BUILD_ROOT)/riotboard' \
-	    -e 'RIOTPROJECT=$(DOCKER_BUILD_ROOT)/riotproject' \
-	    -e 'BOARD=$(BOARD)' \
-	    -e 'RIOT_VERSION=$(RIOT_VERSION)' \
-	    -e '__RIOTBUILD_FLAG=$(__RIOTBUILD_FLAG)' \
-	    -e 'QUIET=$(QUIET)' \
-	    -w '$(DOCKER_BUILD_ROOT)/riotproject/$(BUILDRELPATH)' \
-	    '$(DOCKER_IMAGE)' make $(DOCKER_MAKECMDGOALS)
+# Generate an XML file containing all macro definitions and include paths for
+# use in Eclipse CDT
+.PHONY: eclipsesym eclipsesym.xml $(CURDIR)/eclipsesym.xml
+eclipsesym: $(CURDIR)/eclipsesym.xml
+eclipsesym.xml: $(CURDIR)/eclipsesym.xml
+
+$(CURDIR)/eclipsesym.xml:
+	$(AD)printf "%s\n" $(CC) $(CFLAGS) $(INCLUDES) | \
+		$(RIOTBASE)/dist/tools/eclipsesym/cmdline2xml.sh > $@
 
 # Extra make goals for testing and comparing changes.
 include $(RIOTBASE)/Makefile.buildtests
@@ -316,11 +308,13 @@ include $(RIOTBASE)/Makefile.vars
 # Warn if the selected board and drivers don't provide all needed featues:
 ifneq (, $(filter all, $(if $(MAKECMDGOALS), $(MAKECMDGOALS), all)))
   EXPECT_ERRORS :=
+  EXPECT_CONFLICT :=
 
   # Test if there where dependencies against a module in DISABLE_MODULE.
   ifneq (, $(filter $(DISABLE_MODULE), $(USEMODULE)))
     $(shell $(COLOR_ECHO) "$(COLOR_RED)Required modules were disabled using DISABLE_MODULE:$(COLOR_RESET)"\
                           "$(sort $(filter $(DISABLE_MODULE), $(USEMODULE)))" 1>&2)
+    USEMODULE := $(filter-out $(DISABLE_MODULE), $(USEMODULE))
     EXPECT_ERRORS := 1
   endif
 
@@ -329,6 +323,17 @@ ifneq (, $(filter all, $(if $(MAKECMDGOALS), $(MAKECMDGOALS), all)))
     $(shell $(COLOR_ECHO) "$(COLOR_RED)There are unsatisfied feature requirements:$(COLOR_RESET)"\
                           "$(sort $(filter-out $(FEATURES_PROVIDED) $(FEATURES_OPTIONAL), $(FEATURES_REQUIRED)))" 1>&2)
     EXPECT_ERRORS := 1
+  endif
+
+  # Test if any required feature conflict with another one.
+  CONFLICT := $(foreach var,$(FEATURES_CONFLICT),$(if $(filter $(words $(subst :, ,$(var))),$(words $(filter $(FEATURES_REQUIRED),$(subst :, ,$(var))))),$(subst :, ,$(var))))
+  ifneq (, $(strip $(CONFLICT)))
+    $(shell $(COLOR_ECHO) "$(COLOR_YELLOW)The following features may conflict:$(COLOR_RESET)"\
+                          "$(COLOR_GREEN)$(sort $(filter $(FEATURES_REQUIRED), $(CONFLICT)))$(COLOR_RESET)" 1>&2)
+    ifneq (, $(FEATURES_CONFLICT_MSG))
+        $(shell $(COLOR_ECHO) "$(COLOR_YELLOW)Rationale: $(COLOR_RESET)$(FEATURES_CONFLICT_MSG)" 1>&2)
+    endif
+    EXPECT_CONFLICT := 1
   endif
 
   # If there is a whitelist, then test if the board is whitelisted.
@@ -347,9 +352,14 @@ ifneq (, $(filter all, $(if $(MAKECMDGOALS), $(MAKECMDGOALS), all)))
     endif
   endif
 
+  ifneq (, $(EXPECT_CONFLICT))
+    $(shell $(COLOR_ECHO) "\n$(COLOR_YELLOW)EXPECT undesired behaviour!$(COLOR_RESET)" 1>&2)
+  endif
+
   ifneq (, $(EXPECT_ERRORS))
     $(shell $(COLOR_ECHO) "\n\n$(COLOR_RED)EXPECT ERRORS!$(COLOR_RESET)\n\n" 1>&2)
   endif
+
 endif
 
 else # RIOT_VERSION

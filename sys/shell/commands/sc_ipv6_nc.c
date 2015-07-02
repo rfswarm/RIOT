@@ -30,35 +30,35 @@ static void _print_nc_state(ng_ipv6_nc_t *entry)
 {
     switch (entry->flags & NG_IPV6_NC_STATE_MASK) {
         case NG_IPV6_NC_STATE_UNMANAGED:
-            printf("UNMANAGED");
+            printf("UNMANAGED   ");
             break;
 
         case NG_IPV6_NC_STATE_UNREACHABLE:
-            printf("UNREACHABLE");
+            printf("UNREACHABLE ");
             break;
 
         case NG_IPV6_NC_STATE_INCOMPLETE:
-            printf("INCOMPLETE");
+            printf("INCOMPLETE  ");
             break;
 
         case NG_IPV6_NC_STATE_STALE:
-            printf("STALE");
+            printf("STALE       ");
             break;
 
         case NG_IPV6_NC_STATE_DELAY:
-            printf("DELAY");
+            printf("DELAY       ");
             break;
 
         case NG_IPV6_NC_STATE_PROBE:
-            printf("PROBE");
+            printf("PROBE       ");
             break;
 
         case NG_IPV6_NC_STATE_REACHABLE:
-            printf("REACHABLE");
+            printf("REACHABLE   ");
             break;
 
         default:
-            printf("UNKNOWN");
+            printf("UNKNOWN     ");
             break;
     }
 }
@@ -87,8 +87,8 @@ static void _print_nc_type(ng_ipv6_nc_t *entry)
 static bool _is_iface(kernel_pid_t iface)
 {
 #ifdef MODULE_NG_NETIF
-    size_t numof;
-    kernel_pid_t *ifs = ng_netif_get(&numof);
+    kernel_pid_t ifs[NG_NETIF_NUMOF];
+    size_t numof = ng_netif_get(ifs);
 
     for (size_t i = 0; i < numof; i++) {
         if (ifs[i] == iface) {
@@ -107,8 +107,8 @@ static int _ipv6_nc_list(void)
     char ipv6_str[NG_IPV6_ADDR_MAX_STR_LEN];
     char l2addr_str[3 * MAX_L2_ADDR_LEN];
 
-    puts("IPv6 address                    if  L2 address                state      type");
-    puts("-----------------------------------------------------------------------------");
+    puts("IPv6 address                    if  L2 address                state       type");
+    puts("------------------------------------------------------------------------------");
 
     for (ng_ipv6_nc_t *entry = ng_ipv6_nc_get_next(NULL);
          entry != NULL;
@@ -144,7 +144,7 @@ static int _ipv6_nc_add(kernel_pid_t iface, char *ipv6_addr_str,
         return 1;
     }
 
-    if (ng_ipv6_nc_add(iface, &ipv6_addr, l2_addr, l2_addr_len, 0) < 0) {
+    if (ng_ipv6_nc_add(iface, &ipv6_addr, l2_addr, l2_addr_len, 0) == NULL) {
         puts("error: unable to add address to neighbor cache.");
         return 1;
     }

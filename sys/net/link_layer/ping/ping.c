@@ -34,7 +34,7 @@
 /*--------------------------------------------------------------------------------------*/
 /* interal defines */
 #define RCV_BUFFER_SIZE     (64)
-#define RADIO_STACK_SIZE    (KERNEL_CONF_STACKSIZE_DEFAULT)
+#define RADIO_STACK_SIZE    (THREAD_STACKSIZE_DEFAULT)
 #define MAX_PROB_STATS      (64)
 
 /* internal prototypes */
@@ -71,7 +71,7 @@ void l2_ping_init(void)
     mutex_init(&ping_sender_mutex);
     kernel_pid_t l2_pkt_handler_pid = thread_create(l2_pkt_handler_stack_buffer,
                                                     RADIO_STACK_SIZE,
-                                                    PRIORITY_MAIN - 2,
+                                                    THREAD_PRIORITY_MAIN - 2,
                                                     CREATE_STACKTEST,
                                                     l2_pkt_handler, NULL,
                                                     "l2_pkt_handler");
@@ -140,7 +140,7 @@ static void *l2_pkt_handler(void *unused)
     radio_packet_t *p;
     l2_ping_payload_t *pp;
 
-    msg_init_queue(msg_q, sizeof(msg_q));
+    msg_init_queue(msg_q, RCV_BUFFER_SIZE);
 
     while (1) {
         msg_receive(&m);

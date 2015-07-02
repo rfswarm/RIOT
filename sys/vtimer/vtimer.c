@@ -21,6 +21,9 @@
 #include <string.h>
 #include <inttypes.h>
 
+#define ENABLE_DEBUG    (0)
+#include "debug.h"
+
 #include "irq.h"
 #include "priority_queue.h"
 #include "timex.h"
@@ -32,8 +35,14 @@
 
 #include "vtimer.h"
 
-#define ENABLE_DEBUG    (0)
-#include "debug.h"
+
+#if ENABLE_DEBUG
+
+void vtimer_print_short_queue(void);
+void vtimer_print_long_queue(void);
+void vtimer_print(vtimer_t *t);
+
+#endif
 
 #define VTIMER_THRESHOLD 20UL
 #define VTIMER_BACKOFF 10UL
@@ -69,8 +78,6 @@ static volatile int in_callback = false;
 static int hwtimer_id = -1;
 static uint32_t hwtimer_next_absolute;
 
-static uint32_t seconds = 0;
-
 static inline priority_queue_node_t *timer_get_node(vtimer_t *timer)
 {
     if (!timer) {
@@ -90,6 +97,12 @@ static inline vtimer_t *node_get_timer(priority_queue_node_t *node)
 static int set_longterm(vtimer_t *timer)
 {
     timer->priority_queue_entry.priority = timer->absolute.seconds;
+    /* *** UGLY FIX BEGINS *** */
+    /* Workaround for a bug in a so far undiscovered location which causes the
+     * vtimer to add the same timer twice, locking the system in an infinite
+     * loop inside priority_queue_add. */
+    priority_queue_remove(&longterm_priority_queue_root, timer_get_node(timer));
+    /* *** UGLY FIX ENDS *** */
     priority_queue_add(&longterm_priority_queue_root, timer_get_node(timer));
     return 0;
 }
@@ -117,25 +130,20 @@ static int update_shortterm(void)
     /* short term part of the next vtimer */
     hwtimer_next_absolute = shortterm_priority_queue_root.first->priority;
 
-    uint32_t next = hwtimer_next_absolute;
+    uint32_t next = hwtimer_next_absolute + longterm_tick_start;
 
     /* current short term time */
-    uint32_t now = HWTIMER_TICKS_TO_US(hwtimer_now());
-
-    /* make sure the longterm_tick_timer does not get truncated */
-    if (node_get_timer(shortterm_priority_queue_root.first)->action != vtimer_callback_tick) {
-        /* the next vtimer to schedule is the long term tick */
-        /* it has a shortterm offset of longterm_tick_start */
-        next += longterm_tick_start;
-    }
+    uint32_t now_ticks = hwtimer_now();
+    uint32_t now = HWTIMER_TICKS_TO_US(now_ticks);
 
     if((next -  HWTIMER_TICKS_TO_US(VTIMER_THRESHOLD) - now) > MICROSECONDS_PER_TICK ) {
         DEBUG("truncating next (next -  HWTIMER_TICKS_TO_US(VTIMER_THRESHOLD) - now): %lu\n", (next -  HWTIMER_TICKS_TO_US(VTIMER_THRESHOLD) - now));
         next = now +  HWTIMER_TICKS_TO_US(VTIMER_BACKOFF);
     }
 
-    DEBUG("update_shortterm: Set hwtimer to %" PRIu32 " (now=%lu)\n", next, HWTIMER_TICKS_TO_US(hwtimer_now()));
-    hwtimer_id = hwtimer_set_absolute(HWTIMER_TICKS(next), vtimer_callback, NULL);
+    DEBUG("update_shortterm: Set hwtimer to %" PRIu32 " (now=%lu)\n", next, now);
+    uint32_t next_ticks = now_ticks + HWTIMER_TICKS(next - now);
+    hwtimer_id = hwtimer_set_absolute(next_ticks, vtimer_callback, NULL);
 
     return 0;
 }
@@ -145,16 +153,16 @@ void vtimer_callback_tick(vtimer_t *timer)
     (void) timer;
 
     DEBUG("vtimer_callback_tick().\n");
-    seconds += SECONDS_PER_TICK;
 
-    longterm_tick_start = longterm_tick_timer.absolute.microseconds;
-    longterm_tick_timer.absolute.microseconds += MICROSECONDS_PER_TICK;
+    longterm_tick_start += MICROSECONDS_PER_TICK;
+    longterm_tick_timer.absolute.seconds += SECONDS_PER_TICK;
+    longterm_tick_timer.absolute.microseconds = MICROSECONDS_PER_TICK; // Should never change, just for clarity.
     set_shortterm(&longterm_tick_timer);
 
     while (longterm_priority_queue_root.first) {
         vtimer_t *timer = node_get_timer(longterm_priority_queue_root.first);
 
-        if (timer->absolute.seconds == seconds) {
+        if (timer->absolute.seconds == longterm_tick_timer.absolute.seconds) {
             priority_queue_remove_head(&longterm_priority_queue_root);
             set_shortterm(timer);
         }
@@ -187,6 +195,12 @@ static int set_shortterm(vtimer_t *timer)
 {
     DEBUG("set_shortterm(): Absolute: %" PRIu32 " %" PRIu32 "\n", timer->absolute.seconds, timer->absolute.microseconds);
     timer->priority_queue_entry.priority = timer->absolute.microseconds;
+    /* *** UGLY FIX BEGINS *** */
+    /* Workaround for a bug in a so far undiscovered location which causes the
+     * vtimer to add the same timer twice, locking the system in an infinite
+     * loop inside priority_queue_add. */
+    priority_queue_remove(&shortterm_priority_queue_root, timer_get_node(timer));
+    /* *** UGLY FIX ENDS *** */
     priority_queue_add(&shortterm_priority_queue_root, timer_get_node(timer));
     return 1;
 }
@@ -262,7 +276,7 @@ static int vtimer_set(vtimer_t *timer)
     }
 
     unsigned state = disableIRQ();
-    if (timer->absolute.seconds != seconds) {
+    if (timer->absolute.seconds != longterm_tick_timer.absolute.seconds) {
         /* we're long-term */
         DEBUG("vtimer_set(): setting long_term\n");
         result = set_longterm(timer);
@@ -286,10 +300,10 @@ static int vtimer_set(vtimer_t *timer)
 
 void vtimer_now(timex_t *out)
 {
-    uint32_t us = HWTIMER_TICKS_TO_US(hwtimer_now() - longterm_tick_start);
-    uint32_t us_per_s = 1000ul * 1000ul;
+    uint32_t us = HWTIMER_TICKS_TO_US(hwtimer_now()) - longterm_tick_start;
+    static const uint32_t us_per_s = 1000ul * 1000ul;
 
-    out->seconds = seconds + us / us_per_s;
+    out->seconds = longterm_tick_timer.absolute.seconds + us / us_per_s;
     out->microseconds = us % us_per_s;
 }
 
@@ -306,18 +320,16 @@ void vtimer_get_localtime(struct tm *localt)
     timex_t now;
     vtimer_now(&now);
 
+    memset(localt, 0, sizeof(struct tm));
     localt->tm_sec = now.seconds % 60;
     localt->tm_min = (now.seconds / 60) % 60;
     localt->tm_hour = (now.seconds / 60 / 60) % 24;
-
-    // TODO: fill the other fields
 }
 
 void vtimer_init(void)
 {
     DEBUG("vtimer_init().\n");
     unsigned state = disableIRQ();
-    seconds = 0;
 
     longterm_tick_start = 0;
 

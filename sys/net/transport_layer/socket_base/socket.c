@@ -9,8 +9,8 @@
 /**
  * @ingroup socket_base
  * @{
- * @file    socket.c
- * @brief   functions for BSD socket API, methods return default values and 
+ * @file
+ * @brief   functions for BSD socket API, methods return default values and
  *          will be overwritten by appropriate transport layer protocols.
  * @author  Oliver Gesch <oliver.gesch@googlemail.com>
  * @author  Cenk Gündoğan <cnkgndgn@gmail.com>

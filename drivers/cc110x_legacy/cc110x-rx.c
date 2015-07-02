@@ -10,7 +10,7 @@
 /**
  * @ingroup     drivers_cc110x_legacy
  * @{
- * @file        cc110x-rx.c
+ * @file
  * @brief       Functions for packet reception on cc110x
  *
  * @author      Oliver Hahm <oliver.hahm@inria.fr>
@@ -25,7 +25,7 @@
 #include "msg.h"
 #include "transceiver.h"
 
-#include "cpu-conf.h"
+#include "cpu_conf.h"
 #include "cpu.h"
 
 #ifdef DBG_IGNORE

@@ -19,7 +19,7 @@ static inline char _half_byte_to_char(uint8_t half_byte)
     return (half_byte < 10) ? ('0' + half_byte) : ('a' + (half_byte - 10));
 }
 
-char *ng_netif_addr_to_str(char *out, size_t out_len, uint8_t *addr,
+char *ng_netif_addr_to_str(char *out, size_t out_len, const uint8_t *addr,
                            size_t addr_len)
 {
     size_t i;
@@ -27,6 +27,8 @@ char *ng_netif_addr_to_str(char *out, size_t out_len, uint8_t *addr,
     if (out_len < (3 * addr_len)) { /* 2 for every byte, 1 for ':' or '\0' */
         return NULL;
     }
+
+    out[0] = '\0';
 
     for (i = 0; i < addr_len; i++) {
         out[(3 * i)] = _half_byte_to_char(addr[i] >> 4);

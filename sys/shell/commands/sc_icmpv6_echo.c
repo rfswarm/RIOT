@@ -23,6 +23,7 @@
 #include "byteorder.h"
 #include "net/ng_icmpv6.h"
 #include "net/ng_ipv6/addr.h"
+#include "net/ng_ipv6/nc.h"
 #include "net/ng_ipv6/hdr.h"
 #include "net/ng_netbase.h"
 #include "thread.h"
@@ -78,11 +79,15 @@ int _handle_reply(ng_pktsnip_t *pkt, uint64_t time)
 
     if ((byteorder_ntohs(icmpv6_hdr->id) == id) &&
         (byteorder_ntohs(icmpv6_hdr->seq) == seq)) {
-        printf("%zu bytes from %s: id=%" PRIu16 " seq=%" PRIu16 " hop limit=%" PRIu8
-               "time = %" PRIu64 ".%03" PRIu64 " ms\n", icmpv6->size,
+        timex_t rt = timex_from_uint64(time);
+        printf("%u bytes from %s: id=%" PRIu16 " seq=%" PRIu16 " hop limit=%" PRIu8
+               " time = %" PRIu32 ".%03" PRIu32 " ms\n", (unsigned) icmpv6->size,
                ng_ipv6_addr_to_str(ipv6_str, &(ipv6_hdr->src), sizeof(ipv6_str)),
                byteorder_ntohs(icmpv6_hdr->id), byteorder_ntohs(icmpv6_hdr->seq),
-               ipv6_hdr->hl, time / MS_IN_USEC, time % MS_IN_USEC);
+               ipv6_hdr->hl,
+               (rt.seconds * SEC_IN_MS) + (rt.microseconds / MS_IN_USEC),
+               rt.microseconds % MS_IN_USEC);
+        ng_ipv6_nc_still_reachable(&ipv6_hdr->src);
     }
     else {
         puts("error: unexpected parameters");
@@ -175,8 +180,10 @@ int _icmpv6_ping(int argc, char **argv)
                 case NG_NETAPI_MSG_TYPE_RCV:
                     vtimer_now(&stop);
                     stop = timex_sub(stop, start);
-                    success += _handle_reply((ng_pktsnip_t *)msg.content.ptr,
-                                             timex_uint64(stop));
+
+                    ng_pktsnip_t *pkt = (ng_pktsnip_t *)msg.content.ptr;
+                    success += _handle_reply(pkt, timex_uint64(stop));
+                    ng_pktbuf_release(pkt);
 
                     if (timex_cmp(stop, max_rtt) > 0) {
                         max_rtt = stop;
@@ -211,19 +218,22 @@ int _icmpv6_ping(int argc, char **argv)
     printf("--- %s ping statistics ---\n", addr_str);
 
     if (success > 0) {
+        timex_normalize(&sum_rtt);
         printf("%d packets transmitted, %d received, %d%% packet loss, time %"
-               PRIu64 " ms\n", n, success, (success - n) / n,
-               timex_uint64(sum_rtt) / MS_IN_USEC);
-        uint64_t avg_rtt = timex_uint64(sum_rtt) / n;  /* get average */
+               PRIu32 ".06%" PRIu32 " s\n", n, success,
+               (100 - ((success * 100) / n)),
+               sum_rtt.seconds, sum_rtt.microseconds);
+        timex_t avg_rtt = timex_from_uint64(timex_uint64(sum_rtt) / n);  /* get average */
         printf("rtt min/avg/max = "
-               "%" PRIu64 ".%03" PRIu64 "/"
-               "%" PRIu64 ".%03" PRIu64 "/"
-               "%" PRIu64 ".%03" PRIu64 " ms\n",
-               timex_uint64(min_rtt) / MS_IN_USEC,
-               timex_uint64(min_rtt) % MS_IN_USEC,
-               avg_rtt / MS_IN_USEC, avg_rtt % MS_IN_USEC,  /* sum is now avg, see above */
-               timex_uint64(max_rtt) / MS_IN_USEC,
-               timex_uint64(max_rtt) % MS_IN_USEC);
+               "%" PRIu32 ".%03" PRIu32 "/"
+               "%" PRIu32 ".%03" PRIu32 "/"
+               "%" PRIu32 ".%03" PRIu32 " ms\n",
+               (min_rtt.seconds * SEC_IN_MS) + (min_rtt.seconds / MS_IN_USEC),
+               min_rtt.microseconds % MS_IN_USEC,
+               (avg_rtt.seconds * SEC_IN_MS) + (avg_rtt.seconds / MS_IN_USEC),
+               avg_rtt.microseconds % MS_IN_USEC,
+               (max_rtt.seconds * SEC_IN_MS) + (max_rtt.seconds / MS_IN_USEC),
+               max_rtt.microseconds % MS_IN_USEC);
     }
     else {
         printf("%d packets transmitted, 0 received, 100%% packet loss\n", n);

@@ -19,6 +19,7 @@
  * @}
  */
 
+#include "net/eui64.h"
 #include "net/ng_ieee802154.h"
 #include "net/ng_netbase.h"
 #include "ng_at86rf2xx.h"
@@ -40,7 +41,9 @@ static size_t _make_data_frame_hdr(ng_at86rf2xx_t *dev, uint8_t *buf,
     buf[1] = 0x88;      /* use short src and dst addresses as starting point */
 
     /* if AUTOACK is enabled, then we also expect ACKs for this packet */
-    if (dev->options & NG_AT86RF2XX_OPT_AUTOACK) {
+    if (!(hdr->flags & NG_NETIF_HDR_FLAGS_BROADCAST) &&
+        !(hdr->flags & NG_NETIF_HDR_FLAGS_MULTICAST) &&
+        (dev->options & NG_AT86RF2XX_OPT_AUTOACK)) {
         buf[0] |= NG_IEEE802154_FCF_ACK_REQ;
     }
 
@@ -236,7 +239,7 @@ static int _send(ng_netdev_t *netdev, ng_pktsnip_t *pkt)
     len = ng_at86rf2xx_tx_load(dev, mhr, len, 0);
     /* load packet data into FIFO */
     while (snip) {
-        len += ng_at86rf2xx_tx_load(dev, snip->data, snip->size, len);
+        len = ng_at86rf2xx_tx_load(dev, snip->data, snip->size, len);
         snip = snip->next;
     }
     /* send data out directly if pre-loading id disabled */
@@ -398,6 +401,27 @@ static int _get(ng_netdev_t *device, ng_netconf_opt_t opt,
             *((uint16_t *)val) = dev->pan;
             return sizeof(uint16_t);
 
+        case NETCONF_OPT_IPV6_IID:
+            if (max_len < sizeof(eui64_t)) {
+                return -EOVERFLOW;
+            }
+            if (dev->options & NG_AT86RF2XX_OPT_SRC_ADDR_LONG) {
+                uint64_t addr = ng_at86rf2xx_get_addr_long(dev);
+                ng_ieee802154_get_iid(val, (uint8_t *)&addr, 8);
+            }
+            else {
+                uint16_t addr = ng_at86rf2xx_get_addr_short(dev);
+                ng_ieee802154_get_iid(val, (uint8_t *)&addr, 2);
+            }
+            return sizeof(eui64_t);
+
+        case NETCONF_OPT_PROTO:
+            if (max_len < sizeof(ng_nettype_t)) {
+                return -EOVERFLOW;
+            }
+            *((ng_nettype_t *)val) = dev->proto;
+            return sizeof(ng_nettype_t);
+
         case NETCONF_OPT_CHANNEL:
             if (max_len < sizeof(uint16_t)) {
                 return -EOVERFLOW;
@@ -428,9 +452,6 @@ static int _get(ng_netdev_t *device, ng_netconf_opt_t opt,
             break;
 
         case NETCONF_OPT_PRELOADING:
-            if (max_len < sizeof(ng_netconf_enable_t)) {
-                return -EOVERFLOW;
-            }
             if (dev->options & NG_AT86RF2XX_OPT_PRELOADING) {
                 *((ng_netconf_enable_t *)val) = NETCONF_ENABLE;
             }
@@ -440,9 +461,6 @@ static int _get(ng_netdev_t *device, ng_netconf_opt_t opt,
             return sizeof(ng_netconf_enable_t);
 
         case NETCONF_OPT_AUTOACK:
-            if (max_len < sizeof(ng_netconf_enable_t)) {
-                return -EOVERFLOW;
-            }
             if (dev->options & NG_AT86RF2XX_OPT_AUTOACK) {
                 *((ng_netconf_enable_t *)val) = NETCONF_ENABLE;
             }
@@ -451,10 +469,14 @@ static int _get(ng_netdev_t *device, ng_netconf_opt_t opt,
             }
             return sizeof(ng_netconf_enable_t);
 
-        case NETCONF_OPT_PROMISCUOUSMODE:
-            if (max_len < sizeof(ng_netconf_enable_t)) {
+        case NETCONF_OPT_RETRANS:
+            if (max_len < sizeof(uint8_t)) {
                 return -EOVERFLOW;
             }
+            *((uint8_t *)val) = ng_at86rf2xx_get_max_retries(dev);
+            return sizeof(uint8_t);
+
+        case NETCONF_OPT_PROMISCUOUSMODE:
             if (dev->options & NG_AT86RF2XX_OPT_PROMISCUOUS) {
                 *((ng_netconf_enable_t *)val) = NETCONF_ENABLE;
             }
@@ -464,9 +486,6 @@ static int _get(ng_netdev_t *device, ng_netconf_opt_t opt,
             return sizeof(ng_netconf_enable_t);
 
         case NETCONF_OPT_RAWMODE:
-            if (max_len < sizeof(ng_netconf_enable_t)) {
-                return -EOVERFLOW;
-            }
             if (dev->options & NG_AT86RF2XX_OPT_RAWDUMP) {
                 *((ng_netconf_enable_t *)val) = NETCONF_ENABLE;
             }
@@ -476,15 +495,32 @@ static int _get(ng_netdev_t *device, ng_netconf_opt_t opt,
             return sizeof(ng_netconf_enable_t);
 
         case NETCONF_OPT_IS_CHANNEL_CLR:
-            if (max_len < sizeof(ng_netconf_enable_t)) {
-                return -EOVERFLOW;
-            }
             if (ng_at86rf2xx_cca(dev)) {
                 *((ng_netconf_enable_t *)val) = NETCONF_ENABLE;
             }
             else {
                 *((ng_netconf_enable_t *)val) = NETCONF_DISABLE;
             }
+            return sizeof(ng_netconf_enable_t);
+
+        case NETCONF_OPT_RX_START_IRQ:
+            *((ng_netconf_enable_t *)val) =
+                !!(dev->options & NG_AT86RF2XX_OPT_TELL_RX_START);
+            return sizeof(ng_netconf_enable_t);
+
+        case NETCONF_OPT_RX_END_IRQ:
+            *((ng_netconf_enable_t *)val) =
+                !!(dev->options & NG_AT86RF2XX_OPT_TELL_RX_END);
+            return sizeof(ng_netconf_enable_t);
+
+        case NETCONF_OPT_TX_START_IRQ:
+            *((ng_netconf_enable_t *)val) =
+                !!(dev->options & NG_AT86RF2XX_OPT_TELL_TX_START);
+            return sizeof(ng_netconf_enable_t);
+
+        case NETCONF_OPT_TX_END_IRQ:
+            *((ng_netconf_enable_t *)val) =
+                !!(dev->options & NG_AT86RF2XX_OPT_TELL_TX_END);
             return sizeof(ng_netconf_enable_t);
 
         default:
@@ -568,34 +604,49 @@ static int _set(ng_netdev_t *device, ng_netconf_opt_t opt,
             return _set_state(dev, *((ng_netconf_state_t *)val));
 
         case NETCONF_OPT_AUTOACK:
-            if (len > sizeof(ng_netconf_enable_t)) {
-                return -EOVERFLOW;
-            }
             ng_at86rf2xx_set_option(dev, NG_AT86RF2XX_OPT_AUTOACK,
                                     ((bool *)val)[0]);
             return sizeof(ng_netconf_enable_t);
 
-        case NETCONF_OPT_PRELOADING:
-            if (len > sizeof(ng_netconf_enable_t)) {
+        case NETCONF_OPT_RETRANS:
+            if (len > sizeof(uint8_t)) {
                 return -EOVERFLOW;
             }
+            ng_at86rf2xx_set_max_retries(dev, *((uint8_t *)val));
+            return sizeof(uint8_t);
+
+        case NETCONF_OPT_PRELOADING:
             ng_at86rf2xx_set_option(dev, NG_AT86RF2XX_OPT_PRELOADING,
                                     ((bool *)val)[0]);
             return sizeof(ng_netconf_enable_t);
 
         case NETCONF_OPT_PROMISCUOUSMODE:
-            if (len > sizeof(ng_netconf_enable_t)) {
-                return -EOVERFLOW;
-            }
             ng_at86rf2xx_set_option(dev, NG_AT86RF2XX_OPT_PROMISCUOUS,
                                     ((bool *)val)[0]);
             return sizeof(ng_netconf_enable_t);
 
         case NETCONF_OPT_RAWMODE:
-            if (len > sizeof(ng_netconf_enable_t)) {
-                return -EOVERFLOW;
-            }
             ng_at86rf2xx_set_option(dev, NG_AT86RF2XX_OPT_RAWDUMP,
+                                    ((bool *)val)[0]);
+            return sizeof(ng_netconf_enable_t);
+
+        case NETCONF_OPT_RX_START_IRQ:
+            ng_at86rf2xx_set_option(dev, NG_AT86RF2XX_OPT_TELL_RX_START,
+                                    ((bool *)val)[0]);
+            return sizeof(ng_netconf_enable_t);
+
+        case NETCONF_OPT_RX_END_IRQ:
+            ng_at86rf2xx_set_option(dev, NG_AT86RF2XX_OPT_TELL_RX_END,
+                                    ((bool *)val)[0]);
+            return sizeof(ng_netconf_enable_t);
+
+        case NETCONF_OPT_TX_START_IRQ:
+            ng_at86rf2xx_set_option(dev, NG_AT86RF2XX_OPT_TELL_TX_START,
+                                    ((bool *)val)[0]);
+            return sizeof(ng_netconf_enable_t);
+
+        case NETCONF_OPT_TX_END_IRQ:
+            ng_at86rf2xx_set_option(dev, NG_AT86RF2XX_OPT_TELL_TX_END,
                                     ((bool *)val)[0]);
             return sizeof(ng_netconf_enable_t);
 
@@ -643,9 +694,7 @@ static void _isr_event(ng_netdev_t *device, uint32_t event_type)
     state = ng_at86rf2xx_get_state(dev);
 
     if (irq_mask & NG_AT86RF2XX_IRQ_STATUS_MASK__RX_START) {
-        if (dev->event_cb && (dev->options & NG_AT86RF2XX_OPT_TELL_RX_START)) {
-            dev->event_cb(NETDEV_EVENT_RX_STARTED, NULL);
-        }
+        dev->event_cb(NETDEV_EVENT_RX_STARTED, NULL);
         DEBUG("[ng_at86rf2xx] EVT - RX_START\n");
     }
     if (irq_mask & NG_AT86RF2XX_IRQ_STATUS_MASK__TRX_END) {

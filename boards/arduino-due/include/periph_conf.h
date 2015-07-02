@@ -15,10 +15,11 @@
  *
  * @author      Hauke Petersen  <hauke.petersen@fu-berlin.de>
  * @author      Peter Kietzmann <peter.kietzmann@haw-hamburg.de>
+ * @author      Andreas "Paul" Pauli <andreas.pauli@haw-hamburg.de>
  */
 
-#ifndef __PERIPH_CONF_H
-#define __PERIPH_CONF_H
+#ifndef PERIPH_CONF_H_
+#define PERIPH_CONF_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -145,7 +146,6 @@ extern "C" {
  * @name GPIO configuration
  * @{
  */
-#define GPIO_NUMOF          (32U)
 #define GPIO_0_EN           1
 #define GPIO_1_EN           1
 #define GPIO_2_EN           1
@@ -178,6 +178,8 @@ extern "C" {
 #define GPIO_29_EN          1
 #define GPIO_30_EN          1
 #define GPIO_31_EN          1
+
+/* interrupt priority */
 #define GPIO_IRQ_PRIO       1
 
 /* GPIO channel 0 config */
@@ -342,9 +344,40 @@ extern "C" {
 #define GPIO_B21_MAP        31
 /** @} */
 
+/**
+ * @name PWM configuration
+ * @{
+ */
+#define PWM_NUMOF           (1U)
+#define PWM_0_EN            (1)
+#define PWM_MAX_VALUE       (0xffff)
+#define PWM_MAX_CHANNELS    (4U)
+
+/* PWM_0 configuration */
+#define PWM_0_DEV           PWM
+#define PWM_0_PID           ID_PWM
+#define PWM_0_CHANNELS      (4U)
+#define PWM_0_DEV_CH0       (&(PWM_0_DEV->PWM_CH_NUM[4]))
+#define PWM_0_ENA_CH0       PWM_ENA_CHID4
+#define PWM_0_PORT_CH0      PIOC
+#define PWM_0_PIN_CH0       PIO_PC21B_PWML4
+#define PWM_0_DEV_CH1       (&(PWM_0_DEV->PWM_CH_NUM[5]))
+#define PWM_0_ENA_CH1       PWM_ENA_CHID5
+#define PWM_0_PORT_CH1      PIOC
+#define PWM_0_PIN_CH1       PIO_PC22B_PWML5
+#define PWM_0_DEV_CH2       (&(PWM_0_DEV->PWM_CH_NUM[6]))
+#define PWM_0_ENA_CH2       PWM_ENA_CHID6
+#define PWM_0_PORT_CH2      PIOC
+#define PWM_0_PIN_CH2       PIO_PC23B_PWML6
+#define PWM_0_DEV_CH3       (&(PWM_0_DEV->PWM_CH_NUM[7]))
+#define PWM_0_ENA_CH3       PWM_ENA_CHID7
+#define PWM_0_PORT_CH3      PIOC
+#define PWM_0_PIN_CH3       PIO_PC24B_PWML7
+/** @} */
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __PERIPH_CONF_H */
+#endif /* PERIPH_CONF_H_ */
 /** @} */

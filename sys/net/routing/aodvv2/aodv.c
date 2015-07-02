@@ -11,7 +11,7 @@
  * @ingroup     aodvv2
  * @{
  *
- * @file        aodv.c
+ * @file
  * @brief       aodvv2 routing protocol
  *
  * @author      Lotte Steenbrink <lotte.steenbrink@fu-berlin.de>
@@ -41,8 +41,8 @@ char addr_str[IPV6_MAX_ADDR_STR_LEN];
 static struct netaddr_str nbuf;
 #endif
 
-static char aodv_rcv_stack_buf[KERNEL_CONF_STACKSIZE_MAIN];
-static char aodv_snd_stack_buf[KERNEL_CONF_STACKSIZE_MAIN];
+static char aodv_rcv_stack_buf[THREAD_STACKSIZE_MAIN];
+static char aodv_snd_stack_buf[THREAD_STACKSIZE_MAIN];
 
 static aodvv2_metric_t _metric_type;
 static int sender_thread;
@@ -89,11 +89,11 @@ void aodv_init(void)
     aodv_packet_writer_init(_write_packet);
 
     /* start listening & enable sending */
-    thread_create(aodv_rcv_stack_buf, sizeof(aodv_rcv_stack_buf), PRIORITY_MAIN,
+    thread_create(aodv_rcv_stack_buf, sizeof(aodv_rcv_stack_buf), THREAD_PRIORITY_MAIN,
                   CREATE_STACKTEST, _aodv_receiver_thread, NULL, "_aodv_receiver_thread");
     AODV_DEBUG("listening on port %d\n", HTONS(MANET_PORT));
     sender_thread = thread_create(aodv_snd_stack_buf, sizeof(aodv_snd_stack_buf),
-                                  PRIORITY_MAIN, CREATE_STACKTEST, _aodv_sender_thread,
+                                  THREAD_PRIORITY_MAIN, CREATE_STACKTEST, _aodv_sender_thread,
                                   NULL, "_aodv_sender_thread");
 
     /* register aodv for routing */
@@ -242,7 +242,7 @@ static void *_aodv_sender_thread(void *arg)
     (void) arg;
 
     msg_t msgq[RCV_MSG_Q_SIZE];
-    msg_init_queue(msgq, sizeof msgq);
+    msg_init_queue(msgq, RCV_MSG_Q_SIZE);
     AODV_DEBUG("_aodv_sender_thread initialized.\n");
 
     while (true) {

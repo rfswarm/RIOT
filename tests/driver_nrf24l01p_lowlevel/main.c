@@ -125,7 +125,7 @@ void print_register(char reg, int num_bytes)
     }
 }
 
-char rx_handler_stack[KERNEL_CONF_STACKSIZE_MAIN];
+char rx_handler_stack[THREAD_STACKSIZE_MAIN];
 
 /* RX handler that waits for a message from the ISR */
 void *nrf24l01p_rx_handler(void *arg)
@@ -197,7 +197,7 @@ int cmd_its(int argc, char **argv)
 
     /* create thread that gets msg when data arrives */
     if (thread_create(
-        rx_handler_stack, sizeof(rx_handler_stack), PRIORITY_MAIN - 1, 0,
+        rx_handler_stack, sizeof(rx_handler_stack), THREAD_PRIORITY_MAIN - 1, 0,
         nrf24l01p_rx_handler, 0, "nrf24l01p_rx_handler") < 0) {
         puts("Error in thread_create");
         return;
@@ -327,23 +327,6 @@ int cmd_print_regs(int argc, char **argv)
     return 0;
 }
 
-
-/**
- * @brief proxy for reading a char from std-in and passing it to the shell
- */
-int shell_read(void)
-{
-    return (int) getchar();
-}
-
-/**
- * @brief proxy for taking a character from the shell and writing it to std-out
- */
-void shell_write(int c)
-{
-    putchar((char)c);
-}
-
 int main(void)
 {
     shell_t shell;
@@ -351,8 +334,7 @@ int main(void)
     puts("Welcome to RIOT!");
 
     puts("Initializing shell...");
-    shell_init(&shell, shell_commands, SHELL_BUFFER_SIZE, shell_read,
-               shell_write);
+    shell_init(&shell, shell_commands, SHELL_BUFFER_SIZE, getchar, putchar);
 
     puts("Starting shell...");
     shell_run(&shell);

@@ -11,7 +11,7 @@
  * @ingroup     rpl
  * @{
  *
- * @file        rpl.c
+ * @file
  * @brief       Implementation of the RPL-core.
  *
  * Implementation of core RPL-functions. Normally it shouldn't be necessary to
@@ -82,8 +82,8 @@ uint8_t rpl_init(int if_id, ipv6_addr_t *address)
     rpl_max_routing_entries = RPL_MAX_ROUTING_ENTRIES;
 #endif
 
-    rpl_process_pid = thread_create(rpl_process_buf, RPL_PROCESS_STACKSIZE,
-                                    PRIORITY_MAIN - 1, CREATE_STACKTEST,
+    rpl_process_pid = thread_create(rpl_process_buf, sizeof(rpl_process_buf),
+                                    THREAD_PRIORITY_MAIN - 1, CREATE_STACKTEST,
                                     rpl_process, NULL, "rpl_process");
 
     sixlowpan_lowpan_init_interface(if_id);

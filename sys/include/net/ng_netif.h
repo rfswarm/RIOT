@@ -83,12 +83,12 @@ void ng_netif_remove(kernel_pid_t pid);
 /**
  * @brief   Get all active interfaces.
  *
- * @param[out] size Size of the resulting array.
+ * @param[out] netifs   List of all active interfaces. There is no order ensured.
+ *                      It must at least fit @ref NG_NETIF_NUMOF elements.
  *
- * @return  All active interfaces. If @p size is 0 on return, the return value
- *          is undefined. No order must be ensured.
+ * @return  The number of active interfaces.
  */
-kernel_pid_t *ng_netif_get(size_t *size);
+size_t ng_netif_get(kernel_pid_t *netifs);
 
 /**
  * @brief   Converts a hardware address to a human readable string.
@@ -107,7 +107,7 @@ kernel_pid_t *ng_netif_get(size_t *size);
  * @return  Copy of @p out on success.
  * @return  NULL, if @p out_len < 3 * @p addr_len.
  */
-char *ng_netif_addr_to_str(char *out, size_t out_len, uint8_t *addr,
+char *ng_netif_addr_to_str(char *out, size_t out_len, const uint8_t *addr,
                            size_t addr_len);
 
 /**
@@ -116,8 +116,6 @@ char *ng_netif_addr_to_str(char *out, size_t out_len, uint8_t *addr,
  *
  * @details The input format must be like `xx:xx:xx:xx` where `xx` will be the
  *          bytes of @p addr in hexadecimal representation.
- *          Changes @p str for simple parsing purposes. Make a copy if you
- *          need it later.
  *
  * @param[out] out      The resulting hardware address.
  * @param[out] out_len  Length of @p out.
@@ -126,7 +124,7 @@ char *ng_netif_addr_to_str(char *out, size_t out_len, uint8_t *addr,
  * @return  Actual length of @p out on success.
  * @return  0, on failure.
  */
-size_t ng_netif_addr_from_str(uint8_t *out, size_t out_len, char *str);
+size_t ng_netif_addr_from_str(uint8_t *out, size_t out_len, const char *str);
 
 #ifdef __cplusplus
 }

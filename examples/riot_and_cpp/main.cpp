@@ -8,7 +8,7 @@
  */
 
 /**
- * @file        main.cpp
+ * @file
  * @brief       Demonstration of mixed c++ and c user application with pure c RIOT
  *              - mixing of c and c++ source to test name mangling
  *              - introducing a namespace to declarative block, avoiding to qualify calls, e.g. std::vector
@@ -37,7 +37,7 @@ extern "C" {
 using namespace std;
 
 /* thread's stack */
-char threadA_stack [KERNEL_CONF_STACKSIZE_MAIN];
+char threadA_stack [THREAD_STACKSIZE_MAIN];
 
 /* thread's function */
 void *threadA_func(void *arg);

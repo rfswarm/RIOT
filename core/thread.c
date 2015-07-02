@@ -10,7 +10,7 @@
  * @ingroup     core_thread
  * @{
  *
- * @file        thread.c
+ * @file
  * @brief       Threading implementation
  *
  * @author      Kaspar Schleiser <kaspar@schleiser.de>
@@ -161,7 +161,7 @@ kernel_pid_t thread_create(char *stack, int stacksize, char priority, int flags,
     }
     else {
         /* create stack guard */
-        *stack = (uintptr_t) stack;
+        *(uintptr_t *) stack = (uintptr_t) stack;
     }
 #endif
 

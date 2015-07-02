@@ -16,8 +16,8 @@
  * @author      Ian Martin <ian@locicontrols.com>
  */
 
-#ifndef __PERIPH_CONF_H
-#define __PERIPH_CONF_H
+#ifndef PERIPH_CONF_H_
+#define PERIPH_CONF_H_
 
 #include "gptimer.h"
 
@@ -116,8 +116,6 @@ extern "C" {
  * @name GPIO configuration
  * @{
  */
-#define GPIO_NUMOF          32
-
 #define GPIO_IRQ_PRIO       1
 
 #define GPIO_0_EN           1
@@ -192,5 +190,5 @@ extern "C" {
 } /* end extern "C" */
 #endif
 
-#endif /* __PERIPH_CONF_H */
+#endif /* PERIPH_CONF_H_ */
 /** @} */

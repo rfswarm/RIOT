@@ -10,7 +10,7 @@
  * @ingroup     core_internal
  * @{
  *
- * @file        kernel_init.c
+ * @file
  * @brief       Platform-independent kernel initilization
  *
  * @author      Kaspar Schleiser <kaspar@schleiser.de>
@@ -18,7 +18,6 @@
  * @}
  */
 
-#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <errno.h>
@@ -32,6 +31,7 @@
 #include "thread.h"
 #include "hwtimer.h"
 #include "irq.h"
+#include "log.h"
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
@@ -76,25 +76,25 @@ static void *idle_thread(void *arg)
 const char *main_name = "main";
 const char *idle_name = "idle";
 
-static char main_stack[KERNEL_CONF_STACKSIZE_MAIN];
-static char idle_stack[KERNEL_CONF_STACKSIZE_IDLE];
+static char main_stack[THREAD_STACKSIZE_MAIN];
+static char idle_stack[THREAD_STACKSIZE_IDLE];
 
 void kernel_init(void)
 {
     (void) disableIRQ();
-    printf("kernel_init(): This is RIOT! (Version: %s)\n", RIOT_VERSION);
+    LOG_INFO("kernel_init(): This is RIOT! (Version: %s)\n", RIOT_VERSION);
 
     hwtimer_init();
 
-    if (thread_create(idle_stack, sizeof(idle_stack), PRIORITY_IDLE, CREATE_WOUT_YIELD | CREATE_STACKTEST, idle_thread, NULL, idle_name) < 0) {
+    if (thread_create(idle_stack, sizeof(idle_stack), THREAD_PRIORITY_IDLE, CREATE_WOUT_YIELD | CREATE_STACKTEST, idle_thread, NULL, idle_name) < 0) {
         printf("kernel_init(): error creating idle task.\n");
     }
 
-    if (thread_create(main_stack, sizeof(main_stack), PRIORITY_MAIN, CREATE_WOUT_YIELD | CREATE_STACKTEST, main_trampoline, NULL, main_name) < 0) {
+    if (thread_create(main_stack, sizeof(main_stack), THREAD_PRIORITY_MAIN, CREATE_WOUT_YIELD | CREATE_STACKTEST, main_trampoline, NULL, main_name) < 0) {
         printf("kernel_init(): error creating main task.\n");
     }
 
-    printf("kernel_init(): jumping into first task...\n");
+    LOG_INFO("kernel_init(): jumping into first task...\n");
 
     cpu_switch_context_exit();
 }

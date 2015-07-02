@@ -10,7 +10,7 @@
  * @ingroup     cpu_stm32f1
  * @{
  *
- * @file        uart.c
+ * @file
  * @brief       Low-level UART driver implementation
  *
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
@@ -57,7 +57,8 @@ static inline void irq_handler(uart_t uartnum, USART_TypeDef *uart);
 static uart_conf_t config[UART_NUMOF];
 
 
-int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, uart_tx_cb_t tx_cb, void *arg)
+int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb,
+              uart_tx_cb_t tx_cb, void *arg)
 {
     int res;
 
@@ -90,6 +91,7 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, uart_tx_cb_t t
     /* register callbacks */
     config[uart].rx_cb = rx_cb;
     config[uart].tx_cb = tx_cb;
+    config[uart].arg = arg;
 
     return 0;
 }

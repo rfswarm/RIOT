@@ -68,6 +68,18 @@ extern "C" {
 /** @} */
 
 /**
+  * @brief   Frequency configuration
+  * @{
+  */
+#ifdef MODULE_NG_AT86RF212B
+typedef enum {
+    NG_AT86RF2XX_FREQ_915MHZ,    /**< frequency 915MHz enabled */
+    NG_AT86RF2XX_FREQ_868MHZ,    /**< frequency 868MHz enabled */
+} ng_at86rf2xx_freq_t;
+#endif
+/** @} */
+
+/**
  * @brief   Default PAN ID
  *
  * TODO: Read some global network stack specific configuration value
@@ -137,6 +149,10 @@ typedef struct {
     uint8_t seq_nr;                     /**< sequence number to use next */
     uint8_t frame_len;                  /**< length of the current TX frame */
     uint16_t pan;                       /**< currently used PAN ID */
+    uint8_t chan;                       /**< currently used channel */
+#ifdef MODULE_NG_AT86RF212B
+    ng_at86rf2xx_freq_t freq;           /**< currently used frequency */
+#endif
     uint8_t addr_short[2];              /**< the radio's short address */
     uint8_t addr_long[8];               /**< the radio's long address */
     uint16_t options;                   /**< state of used options */
@@ -161,6 +177,18 @@ typedef struct {
 int ng_at86rf2xx_init(ng_at86rf2xx_t *dev, spi_t spi, spi_speed_t spi_speed,
                       gpio_t cs_pin, gpio_t int_pin,
                       gpio_t sleep_pin, gpio_t reset_pin);
+
+/**
+ * @brief struct holding all params needed for device initialization
+ */
+typedef struct at86rf2xx_params {
+    spi_t spi;              /**< SPI bus the device is connected to */
+    spi_speed_t spi_speed;  /**< SPI speed to use */
+    gpio_t cs_pin;          /**< GPIO pin connected to chip select */
+    gpio_t int_pin;         /**< GPIO pin connected to the interrupt pin */
+    gpio_t sleep_pin;       /**< GPIO pin connected to the sleep pin */
+    gpio_t reset_pin;       /**< GPIO pin connected to the reset pin */
+} at86rf2xx_params_t;
 
 /**
  * @brief   Trigger a hardware reset and configure radio with default values
@@ -230,6 +258,25 @@ uint8_t ng_at86rf2xx_get_chan(ng_at86rf2xx_t *dev);
  */
 void ng_at86rf2xx_set_chan(ng_at86rf2xx_t *dev, uint8_t chan);
 
+#ifdef MODULE_NG_AT86RF212B
+/**
+ * @brief   Get the configured frequency of the given device
+ *
+ * @param[in] dev           device to read from
+ *
+ * @return                  the currently set frequency
+ */
+ng_at86rf2xx_freq_t ng_at86rf2xx_get_freq(ng_at86rf2xx_t *dev);
+
+/**
+ * @brief   Set the frequency of the given device
+ *
+ * @param[in] dev           device to write to
+ * @param[in] chan          frequency to set
+ */
+void ng_at86rf2xx_set_freq(ng_at86rf2xx_t *dev, ng_at86rf2xx_freq_t freq);
+#endif
+
 /**
  * @brief   Get the configured PAN ID of the given device
  *
@@ -268,6 +315,27 @@ int16_t ng_at86rf2xx_get_txpower(ng_at86rf2xx_t *dev);
  * @param[in] txpower       transmission power in dBm
  */
 void ng_at86rf2xx_set_txpower(ng_at86rf2xx_t *dev, int16_t txpower);
+
+/**
+ * @brief   Get the maximum number of retransmissions
+ *
+ * @param[in] dev           device to read from
+ *
+ * @return                  configured number of retransmissions
+ */
+uint8_t ng_at86rf2xx_get_max_retries(ng_at86rf2xx_t *dev);
+
+/**
+ * @brief   Set the maximum number of retransmissions
+ *
+ * This setting specifies the number of attempts to retransmit a frame, when it
+ * was not acknowledged by the recipient, before the transaction gets cancelled.
+ * The maximum value is 7.
+ *
+ * @param[in] dev           device to write to
+ * @param[in] max           the maximum number of retransmissions
+ */
+void ng_at86rf2xx_set_max_retries(ng_at86rf2xx_t *dev, uint8_t max);
 
 /**
  * @brief   Enable or disable driver specific options

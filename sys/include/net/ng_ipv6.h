@@ -33,6 +33,7 @@
 #include "thread.h"
 
 #include "net/ng_ipv6/addr.h"
+#include "net/ng_ipv6/ext.h"
 #include "net/ng_ipv6/hdr.h"
 #include "net/ng_ipv6/nc.h"
 #include "net/ng_ipv6/netif.h"
@@ -45,14 +46,14 @@ extern "C" {
  * @brief   Default stack size to use for the IPv6 thread
  */
 #ifndef NG_IPV6_STACK_SIZE
-#define NG_IPV6_STACK_SIZE (KERNEL_CONF_STACKSIZE_DEFAULT)
+#define NG_IPV6_STACK_SIZE (THREAD_STACKSIZE_DEFAULT)
 #endif
 
 /**
  * @brief   Default priority for the IPv6 thread
  */
 #ifndef NG_IPV6_PRIO
-#define NG_IPV6_PRIO            (PRIORITY_MAIN - 3)
+#define NG_IPV6_PRIO            (THREAD_PRIORITY_MAIN - 3)
 #endif
 
 /**
@@ -61,6 +62,16 @@ extern "C" {
 #ifndef NG_IPV6_MSG_QUEUE_SIZE
 #define NG_IPV6_MSG_QUEUE_SIZE  (8U)
 #endif
+
+/**
+ * @brief   The PID to the IPv6 thread.
+ *
+ * @note    Use @ref ng_ipv6_init() to initialize. **Do not set by hand**.
+ *
+ * @details This variable is preferred for IPv6 internal communication *only*.
+ *          Please use @ref net_ng_netreg for external communication.
+ */
+extern kernel_pid_t ng_ipv6_pid;
 
 /**
  * @brief   Initialization of the IPv6 thread.

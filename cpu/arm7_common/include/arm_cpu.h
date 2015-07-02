@@ -6,8 +6,8 @@
  * directory for more details.
  */
 
-#ifndef _ARM_CPU_H
-#define _ARM_CPU_H
+#ifndef ARM_CPU_H_
+#define ARM_CPU_H_
 
 #include <stdint.h>
 #include "VIC.h"
@@ -44,4 +44,4 @@ int uart0_puts(char *astring, int length);
 }
 #endif
 
-#endif // _ARM_CPU_H
+#endif /* ARM_CPU_H_ */

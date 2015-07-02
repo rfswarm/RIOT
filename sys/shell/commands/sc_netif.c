@@ -52,8 +52,8 @@ static bool _is_number(char *str)
 
 static bool _is_iface(kernel_pid_t dev)
 {
-    size_t numof;
-    kernel_pid_t *ifs = ng_netif_get(&numof);
+    kernel_pid_t ifs[NG_NETIF_NUMOF];
+    size_t numof = ng_netif_get(ifs);
 
     for (size_t i = 0; i < numof; i++) {
         if (ifs[i] == dev) {
@@ -265,7 +265,7 @@ static void _netif_list(kernel_pid_t dev)
     res = ng_netapi_get(dev, NETCONF_OPT_SRC_LEN, 0, &u16, sizeof(u16));
 
     if (res >= 0) {
-        printf("Source address length: %" PRIu16 "\n            ", u16);
+        printf("Source address length: %" PRIu16 "\n           ", u16);
     }
 
 #ifdef MODULE_NG_IPV6_NETIF
@@ -600,7 +600,10 @@ static int _netif_add(char *cmd_name, kernel_pid_t dev, int argc, char **argv)
         return 1;
     }
 
-    if (ng_ipv6_netif_add_addr(dev, &addr, prefix_len, (type == _ANYCAST)) < 0) {
+    if (ng_ipv6_netif_add_addr(dev, &addr, prefix_len,
+                               (type == _ANYCAST) ?
+                               NG_IPV6_NETIF_ADDR_FLAGS_NON_UNICAST :
+                               NG_IPV6_NETIF_ADDR_FLAGS_UNICAST) == NULL) {
         printf("error: unable to add IPv6 address\n");
         return 1;
     }
@@ -697,8 +700,8 @@ int _netif_send(int argc, char **argv)
 int _netif_config(int argc, char **argv)
 {
     if (argc < 2) {
-        size_t numof;
-        kernel_pid_t *ifs = ng_netif_get(&numof);
+        kernel_pid_t ifs[NG_NETIF_NUMOF];
+        size_t numof = ng_netif_get(ifs);
 
         for (size_t i = 0; i < numof; i++) {
             _netif_list(ifs[i]);

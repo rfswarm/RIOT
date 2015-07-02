@@ -10,14 +10,23 @@ endif
 ifneq (,$(filter cc110x_legacy,$(USEMODULE)))
     USEMODULE_INCLUDES += $(RIOTBASE)/drivers/cc110x_legacy/include
 endif
+ifneq (,$(filter dht,$(USEMODULE)))
+    USEMODULE_INCLUDES += $(RIOTBASE)/drivers/dht/include
+endif
 ifneq (,$(filter at86rf231,$(USEMODULE)))
     USEMODULE_INCLUDES += $(RIOTBASE)/drivers/at86rf231/include
 endif
 ifneq (,$(filter ng_at86rf2xx,$(USEMODULE)))
     USEMODULE_INCLUDES += $(RIOTBASE)/drivers/ng_at86rf2xx/include
 endif
+ifneq (,$(filter kw2xrf,$(USEMODULE)))
+    USEMODULE_INCLUDES += $(RIOTBASE)/drivers/kw2xrf/include
+endif
 ifneq (,$(filter isl29020,$(USEMODULE)))
     USEMODULE_INCLUDES += $(RIOTBASE)/drivers/isl29020/include
+endif
+ifneq (,$(filter isl29125,$(USEMODULE)))
+    USEMODULE_INCLUDES += $(RIOTBASE)/drivers/isl29125/include
 endif
 ifneq (,$(filter lps331ap,$(USEMODULE)))
     USEMODULE_INCLUDES += $(RIOTBASE)/drivers/lps331ap/include

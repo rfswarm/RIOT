@@ -13,7 +13,7 @@
  * @brief       UART0 interface abstraction
  * @{
  *
- * @file        board_uart0.h
+ * @file
  * @brief       Interface definitions for the UART0 abstraction
  */
 
@@ -21,7 +21,8 @@
 #define __BOARD_UART0_H
 
 #include "kernel_types.h"
-#include "cpu-conf.h"   /* To give user access to UART0_BUFSIZE */
+#include "cpu.h"        /* To give user access to UART0_BUFSIZE */
+#include "cpu_conf.h"   /* Some CPUs define this in cpu_conf.h... */
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,7 +64,7 @@ int uart0_readc(void);
  *
  * @param[in] c The character to put on the UART.
  */
-void uart0_putc(int c);
+int uart0_putc(int c);
 
 #ifdef __cplusplus
 }

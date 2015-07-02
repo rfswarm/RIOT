@@ -16,8 +16,8 @@
  * @author      Hinnerk van Bruinehsen <h.v.bruinehsen@fu-berlin.de>
  */
 
-#ifndef __PERIPH_CONF_H
-#define __PERIPH_CONF_H
+#ifndef PERIPH_CONF_H_
+#define PERIPH_CONF_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -264,7 +264,6 @@ extern "C" {
 /**
  * @brief GPIO configuration
  */
-#define GPIO_NUMOF          (0U)
 #define GPIO_0_EN           0
 #define GPIO_1_EN           0
 #define GPIO_2_EN           0
@@ -286,4 +285,4 @@ extern "C" {
 }
 #endif
 
-#endif /* __PERIPH_CONF_H */
+#endif /* PERIPH_CONF_H_ */

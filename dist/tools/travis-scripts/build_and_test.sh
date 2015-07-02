@@ -23,6 +23,7 @@ set_result() {
 
 if [[ $BUILDTEST_MCU_GROUP ]]
 then
+
     if [ "$BUILDTEST_MCU_GROUP" == "static-tests" ]
     then
         RESULT=0
@@ -60,9 +61,9 @@ then
 
         exit $RESULT
     fi
+
     if [ "$BUILDTEST_MCU_GROUP" == "x86" ]
     then
-
         make -C ./tests/unittests all test BOARD=native || exit
         # TODO:
         #   Reenable once https://github.com/RIOT-OS/RIOT/issues/2300 is

@@ -37,7 +37,7 @@ void random_init(void)
 
 int random_read(char *buf, unsigned int num)
 {
-    int count = 0;
+    unsigned int count = 0;
 
     while (count < num) {
         uint32_t tmp;
@@ -54,7 +54,7 @@ int random_read(char *buf, unsigned int num)
         }
     }
 
-    return count;
+    return (int)count;
 }
 
 void random_poweron(void)
@@ -67,7 +67,7 @@ void random_poweron(void)
     }
 
     /* Software reset, bit is self-clearing */
-    BITBAND_REG(KINETIS_RNGB->CMD, RNG_CMD_SR_SHIFT) = 1;
+    BITBAND_REG32(KINETIS_RNGB->CMD, RNG_CMD_SR_SHIFT) = 1;
     /* Set up automatic reseed */
     KINETIS_RNGB->CR = RNG_CR_AR_MASK | RNG_CR_MASKERR_MASK | RNG_CR_MASKDONE_MASK;
 }

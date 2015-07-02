@@ -18,8 +18,8 @@
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
  */
 
-#ifndef __BOARD_H
-#define __BOARD_H
+#ifndef BOARD_H_
+#define BOARD_H_
 
 #include "cpu.h"
 
@@ -65,12 +65,12 @@ extern "C" {
 #define LD4_TOGGLE          (LED_PORT->ODR ^= LD4_PIN)
 
 /* for compatibility to other boards */
-#define LED_GREEN_ON        LD4_ON
-#define LED_GREEN_OFF       LD4_OFF
-#define LED_GREEN_TOGGLE    LD4_TOGGLE
-#define LED_RED_ON          LD3_ON
-#define LED_RED_OFF         LD3_OFF
-#define LED_RED_TOGGLE      LD3_TOGGLE
+#define LED_GREEN_ON        LD3_ON
+#define LED_GREEN_OFF       LD3_OFF
+#define LED_GREEN_TOGGLE    LD3_TOGGLE
+#define LED_RED_ON          LD4_ON
+#define LED_RED_OFF         LD4_OFF
+#define LED_RED_TOGGLE      LD4_TOGGLE
 /** @} */
 
 /**
@@ -82,5 +82,5 @@ void board_init(void);
 }
 #endif
 
-#endif /** __BOARD_H */
+#endif /* BOARD_H_ */
 /** @} */

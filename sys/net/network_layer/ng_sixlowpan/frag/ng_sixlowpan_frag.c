@@ -154,7 +154,7 @@ static uint16_t _send_nth_fragment(ng_sixlowpan_netif_t *iface, ng_pktsnip_t *pk
     hdr->offset = (uint8_t)(offset >> 3);
     pkt = pkt->next;    /* don't copy netif header */
 
-    while ((pkt != NULL) || (offset_count == offset)) {   /* go to offset */
+    while ((pkt != NULL) && (offset_count != offset)) {   /* go to offset */
         offset_count += (uint16_t)pkt->size;
 
         if (offset_count > offset) {    /* we overshot */
@@ -205,6 +205,8 @@ void ng_sixlowpan_frag_send(kernel_pid_t pid, ng_pktsnip_t *pkt,
 #if defined(DEVELHELP) && defined(ENABLE_DEBUG)
     if (iface == NULL) {
         DEBUG("6lo frag: iface == NULL, expect segmentation fault.\n");
+        ng_pktbuf_release(pkt);
+        return;
     }
 #endif
 

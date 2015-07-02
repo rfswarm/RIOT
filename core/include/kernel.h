@@ -10,7 +10,7 @@
  * @addtogroup  core_internal
  * @{
  *
- * @file        kernel.h
+ * @file
  * @brief       Kernel compile time configuration
  *
  *              A reboot() function is also provided
@@ -31,63 +31,13 @@
 #include "cpu.h"
 #include "flags.h"
 #include "sched.h"
-#include "cpu-conf.h"
+#include "cpu_conf.h"
 
 #ifdef __cplusplus
  extern "C" {
 #endif
 
-/**
- * @def KERNEL_CONF_STACKSIZE_DEFAULT
- * @brief A reasonable default stack size that will suffice most smaller tasks
- */
-#ifndef KERNEL_CONF_STACKSIZE_DEFAULT
-#error KERNEL_CONF_STACKSIZE_DEFAULT must be defined per CPU
-#endif
-
-/**
- * @def KERNEL_CONF_STACKSIZE_IDLE
- * @brief Size of the idle task's stack in bytes
- */
-#ifndef KERNEL_CONF_STACKSIZE_IDLE
-#error KERNEL_CONF_STACKSIZE_IDLE must be defined per CPU
-#endif
-
-/**
- * @def KERNEL_CONF_STACKSIZE_PRINTF
- * @ingroup conf
- * @brief Size of the task's printf stack in bytes
- */
-#ifndef KERNEL_CONF_STACKSIZE_PRINTF
-#error KERNEL_CONF_STACKSIZE_PRINTF must be defined per CPU
-#endif
-
-/**
- * @def KERNEL_CONF_STACKSIZE_MAIN
- * @brief Size of the main task's stack in bytes
- */
-#ifndef KERNEL_CONF_STACKSIZE_MAIN
-#define KERNEL_CONF_STACKSIZE_MAIN      (KERNEL_CONF_STACKSIZE_DEFAULT + KERNEL_CONF_STACKSIZE_PRINTF)
-#endif
-
 /* ------------------------------------------------------------------------- */
-/**
- * @def PRIORITY_MIN
- * @brief Least priority a thread can have
- */
-#define PRIORITY_MIN            (SCHED_PRIO_LEVELS-1)
-
-/**
- * @def PRIORITY_IDLE
- * @brief Priority of the idle thread
- */
-#define PRIORITY_IDLE           PRIORITY_MIN
-
-/**
- * @def PRIORITY_MAIN
- * @brief Priority of the main thread
- */
-#define PRIORITY_MAIN           (PRIORITY_MIN - (SCHED_PRIO_LEVELS/2))
 
 /**
  * @def LPM_PREVENT_SLEEP_UART

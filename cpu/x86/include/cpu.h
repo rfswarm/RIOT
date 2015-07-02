@@ -26,13 +26,13 @@
  * @author  René Kijewski <rene.kijewski@fu-berlin.de>
  */
 
-#ifndef CPU__X86__CPU__H__
-#define CPU__X86__CPU__H__
+#ifndef CPU_X86_CPU_H_
+#define CPU_X86_CPU_H_
 
 #include "attributes.h"
 #include "irq.h"
 #include "ucontext.h"
-#include "cpu-conf.h"
+#include "cpu_conf.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -43,11 +43,24 @@
 extern "C" {
 #endif
 
+/**
+ * @brief x86 has architecture specific atomic_cas in x86_atomic.c
+ * @{
+ */
+#define ARCH_HAS_ATOMIC_COMPARE_AND_SWAP 1
+/** @} */
+
+/**
+ * @brief Disable interrupts
+ */
 static inline void __attribute__((always_inline)) dINT(void)
 {
     asm volatile ("cli");
 }
 
+/**
+ * @brief Enable interrupts
+ */
 static inline void __attribute__((always_inline)) eINT(void)
 {
     asm volatile ("sti");

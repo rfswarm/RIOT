@@ -11,7 +11,7 @@
  * @ingroup     aodvv2
  * @{
  *
- * @file        routingtable.h
+ * @file
  * @brief       Cobbled-together routing table.
  *
  * @author      Lotte Steenbrink <lotte.steenbrink@fu-berlin.de>
@@ -139,8 +139,7 @@ bool routingtable_offers_improvement(struct aodvv2_routing_entry_t *rt_entry,
  * @param link_cost           the link cost for this RREQ
  */
 void routingtable_fill_routing_entry_t_rreq(struct aodvv2_packet_data *packet_data,
-                                            struct aodvv2_routing_entry_t *rt_entry,
-                                            uint8_t link_cost);
+                                            struct aodvv2_routing_entry_t *rt_entry);
 
 /**
  * Fills a routing table entry with the data of a RREP.
@@ -149,8 +148,7 @@ void routingtable_fill_routing_entry_t_rreq(struct aodvv2_packet_data *packet_da
  * @param link_cost           the link cost for this RREP
  */
 void routingtable_fill_routing_entry_t_rrep(struct aodvv2_packet_data *packet_data,
-                                            struct aodvv2_routing_entry_t *rt_entry,
-                                            uint8_t link_cost);
+                                            struct aodvv2_routing_entry_t *rt_entry);
 
 void print_routingtable(void);
 void print_routingtable_entry(struct aodvv2_routing_entry_t *rt_entry);

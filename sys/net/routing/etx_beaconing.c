@@ -11,7 +11,7 @@
 /**
  * @ingroup     rpl
  * @{
- * @file        etx_beaconing.c
+ * @file
  * @brief       ETX-beaconing implementation
  *
  * Implementation for ETX-based beaconing.
@@ -38,13 +38,13 @@
 #include "debug.h"
 
 #if ENABLE_DEBUG
-#define ETX_BEACON_STACKSIZE    (KERNEL_CONF_STACKSIZE_DEFAULT + KERNEL_CONF_STACKSIZE_PRINTF_FLOAT)
-#define ETX_RADIO_STACKSIZE     (KERNEL_CONF_STACKSIZE_DEFAULT + KERNEL_CONF_STACKSIZE_PRINTF_FLOAT)
-#define ETX_CLOCK_STACKSIZE     (KERNEL_CONF_STACKSIZE_DEFAULT)
+#define ETX_BEACON_STACKSIZE    (THREAD_STACKSIZE_DEFAULT + THREAD_EXTRA_STACKSIZE_PRINTF_FLOAT)
+#define ETX_RADIO_STACKSIZE     (THREAD_STACKSIZE_DEFAULT + THREAD_EXTRA_STACKSIZE_PRINTF_FLOAT)
+#define ETX_CLOCK_STACKSIZE     (THREAD_STACKSIZE_DEFAULT)
 #else
-#define ETX_BEACON_STACKSIZE    (KERNEL_CONF_STACKSIZE_MAIN)
-#define ETX_RADIO_STACKSIZE     (KERNEL_CONF_STACKSIZE_MAIN)
-#define ETX_CLOCK_STACKSIZE     (KERNEL_CONF_STACKSIZE_DEFAULT)
+#define ETX_BEACON_STACKSIZE    (THREAD_STACKSIZE_MAIN)
+#define ETX_RADIO_STACKSIZE     (THREAD_STACKSIZE_MAIN)
+#define ETX_CLOCK_STACKSIZE     (THREAD_STACKSIZE_DEFAULT)
 #endif
 
 /* prototytpes */
@@ -147,16 +147,16 @@ void etx_init_beaconing(ipv6_addr_t *address)
     DEBUGF("ETX BEACON INIT");
     etx_send_buf[0] = ETX_PKT_OPTVAL;
 
-    etx_beacon_pid = thread_create(etx_beacon_buf, ETX_BEACON_STACKSIZE,
-                                   PRIORITY_MAIN - 1, CREATE_STACKTEST,
+    etx_beacon_pid = thread_create(etx_beacon_buf, sizeof(etx_beacon_buf),
+                                   THREAD_PRIORITY_MAIN - 1, CREATE_STACKTEST,
                                    etx_beacon, NULL, "etx_beacon");
 
-    etx_radio_pid = thread_create(etx_radio_buf, ETX_RADIO_STACKSIZE,
-                                  PRIORITY_MAIN - 1, CREATE_STACKTEST,
+    etx_radio_pid = thread_create(etx_radio_buf, sizeof(etx_radio_buf),
+                                  THREAD_PRIORITY_MAIN - 1, CREATE_STACKTEST,
                                   etx_radio, NULL, "etx_radio");
 
-    etx_clock_pid = thread_create(etx_clock_buf, ETX_CLOCK_STACKSIZE,
-                                  PRIORITY_MAIN - 1, CREATE_STACKTEST,
+    etx_clock_pid = thread_create(etx_clock_buf, sizeof(etx_clock_buf),
+                                  THREAD_PRIORITY_MAIN - 1, CREATE_STACKTEST,
                                   etx_clock, NULL, "etx_clock");
     //register at transceiver
     transceiver_register(TRANSCEIVER_CC1100, etx_radio_pid);

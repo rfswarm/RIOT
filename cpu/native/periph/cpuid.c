@@ -10,7 +10,7 @@
  * @addtogroup  driver_periph
  * @{
  *
- * @file        cpuid.c
+ * @file
  * @brief       Implementation
  *
  * @author      Martine Lenders <mlenders@inf.fu-berlin.de>
@@ -19,7 +19,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "cpu-conf.h"
+#include "cpu_conf.h"
 #include "native_internal.h"
 
 #include "periph/cpuid.h"

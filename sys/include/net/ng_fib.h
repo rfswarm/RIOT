@@ -21,20 +21,36 @@
 #ifndef FIB_H_
 #define FIB_H_
 
+#include "timex.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief Reactive Routing Protocol (RRP) message content to request/reply route discovery
+ * @brief Routing Protocol (RP) message content to request/reply notification
  */
-typedef struct rrp_address_msg_t {
+typedef struct rp_address_msg_t {
     uint8_t *address;      /**< The pointer to the address */
     uint8_t address_size;  /**< The address size */
     uint32_t address_flags; /**< The flags for the given address */
-} rrp_address_msg_t;
+} rp_address_msg_t;
 
-#define FIB_MSG_RRP_SIGNAL (0x99)     /**< message type for RRP notifications */
+#define FIB_MSG_RP_SIGNAL (0x99)     /**< message type for RP notifications */
+
+/**
+ * @brief the size in bytes of a full address
+ * TODO: replace with UNIVERSAL_ADDRESS_SIZE (#3022)
+*/
+#define FIB_DESTINATION_SIZE_SUBSTITUTE (16)
+
+/**
+ * @brief entry used to collect available destinations
+ */
+typedef struct fib_destination_set_entry_t {
+    uint8_t dest[FIB_DESTINATION_SIZE_SUBSTITUTE]; /**< The destination address */
+    size_t dest_size;    /**< The destination address size */
+} fib_destination_set_entry_t;
 
 /**
  * @brief indicator of a lifetime that does not expire (2^32 - 1)
@@ -52,9 +68,16 @@ void fib_init(void);
 void fib_deinit(void);
 
 /**
- * @brief Registration of reactive routing protocol handler function
+ * @brief Registration of a routing protocol handler function
+ *
+ * @param[in] prefix the prefix handled by the according RP
+ * @param[in] prefix_size the prefix size
+ * @return 0 on success
+ *           -ENOMEM if the entry cannot be registered (mximum registrations reached)
+ *           -EINVAL if the prefix is NULL or the provided size is 0
+ *
  */
-void fib_register_rrp(void);
+int fib_register_rp(uint8_t *prefix, size_t prefix_size);
 
 /**
  * @brief Adds a new entry in the corresponding FIB table for global destination and next hop
@@ -116,10 +139,32 @@ void fib_remove_entry(uint8_t *dst, size_t dst_size);
  *         -EHOSTUNREACH if no next hop is available in any FIB table
  *                                           all RRPs are notified before the return
  *         -ENOBUFS if the size for the next hop address is insufficient low
+ *         -EINVAL if one of the passed out pointers is NULL
  */
 int fib_get_next_hop(kernel_pid_t *iface_id,
                      uint8_t *next_hop, size_t *next_hop_size, uint32_t* next_hop_flags,
                      uint8_t *dst, size_t dst_size, uint32_t dst_flags);
+
+/**
+* @brief provides a set of destination addresses matching the given prefix
+* If the out buffer is insufficient low or passed as NULL,
+* the function will continue to count the number of matching entries
+* and provide the number to the caller.
+*
+* @param[in] prefix           the destination address
+* @param[in] prefix_size      the destination address size
+* @param[out] dst_set         the destination addresses matching the prefix
+* @param[in, out] dst_size    the number of entries available on in and used on out
+*
+* @return 0 on success
+*         -EHOSTUNREACH if no entry matches the type in the FIB
+*         -ENOBUFS if the size for the found entries is insufficient low
+*                  The actual needed size is stored then in dst_set_size,
+*                  however the required size may change in between calls.
+*/
+int fib_get_destination_set(uint8_t *prefix, size_t prefix_size,
+                            fib_destination_set_entry_t *dst_set, size_t* dst_set_size);
+
 
 /**
  * @brief returns the actual number of used FIB entries
@@ -140,6 +185,20 @@ void fib_print_fib_table(void);
  * @brief Prints the FIB content
  */
 void fib_print_routes(void);
+
+#if FIB_DEVEL_HELPER
+/**
+ * @brief get the point in time at which the entry for destination dst expires.
+ *
+ * @param[out] lifetime  pointer where the expiration time is written on success
+ * @param[in]  dst       the destination address
+ * @param[in]  dst_size  the destination address size
+ *
+ * @return 0             on success: entry for dst found and lifetime copied
+ *         -EHOSTUNREACH if no fitting entry is available
+ */
+int fib_devel_get_lifetime(timex_t *lifetime, uint8_t *dst, size_t dst_size);
+#endif
 
 #ifdef __cplusplus
 }

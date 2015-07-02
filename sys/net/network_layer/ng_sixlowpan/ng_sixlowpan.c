@@ -19,18 +19,25 @@
 
 #include "net/ng_sixlowpan.h"
 #include "net/ng_sixlowpan/frag.h"
+#include "net/ng_sixlowpan/iphc.h"
 #include "net/ng_sixlowpan/netif.h"
 
 #define ENABLE_DEBUG    (0)
 #include "debug.h"
 
 static kernel_pid_t _pid = KERNEL_PID_UNDEF;
+
+#if ENABLE_DEBUG
+static char _stack[NG_SIXLOWPAN_STACK_SIZE + THREAD_EXTRA_STACKSIZE_PRINTF];
+#else
 static char _stack[NG_SIXLOWPAN_STACK_SIZE];
+#endif
+
 
 /* handles NG_NETAPI_MSG_TYPE_RCV commands */
-void _receive(ng_pktsnip_t *pkt);
+static void _receive(ng_pktsnip_t *pkt);
 /* handles NG_NETAPI_MSG_TYPE_SND commands */
-void _send(ng_pktsnip_t *pkt);
+static void _send(ng_pktsnip_t *pkt);
 /* Main event loop for 6LoWPAN */
 static void *_event_loop(void *args);
 
@@ -40,23 +47,38 @@ kernel_pid_t ng_sixlowpan_init(void)
         return _pid;
     }
 
-    _pid = thread_create(_stack, NG_SIXLOWPAN_STACK_SIZE, NG_SIXLOWPAN_PRIO,
+    _pid = thread_create(_stack, sizeof(_stack), NG_SIXLOWPAN_PRIO,
                          CREATE_STACKTEST, _event_loop, NULL, "6lo");
 
     return _pid;
 }
 
-void _receive(ng_pktsnip_t *pkt)
+static void _receive(ng_pktsnip_t *pkt)
 {
     ng_pktsnip_t *payload;
     uint8_t *dispatch;
-    ng_netreg_entry_t *entry;
+
+    /* seize payload as a temporary variable */
+    payload = ng_pktbuf_start_write(pkt);   /* need to duplicate since pkt->next
+                                             * might get replaced */
+
+    if (payload == NULL) {
+        DEBUG("6lo: can not get write access on received packet\n");
+#if defined(DEVELHELP) && defined(ENABLE_DEBUG)
+        ng_pktbuf_stats();
+#endif
+        ng_pktbuf_release(pkt);
+        return;
+    }
+
+    pkt = payload;  /* reset pkt from temporary variable */
 
     LL_SEARCH_SCALAR(pkt, payload, type, NG_NETTYPE_SIXLOWPAN);
 
     if ((payload == NULL) || (payload->size < 1)) {
         DEBUG("6lo: Received packet has no 6LoWPAN payload\n");
         ng_pktbuf_release(pkt);
+        return;
     }
 
     dispatch = payload->data;
@@ -101,27 +123,27 @@ void _receive(ng_pktsnip_t *pkt)
         return;
     }
 
+#ifdef MODULE_NG_SIXLOWPAN_IPHC
+    if (ng_sixlowpan_iphc_is(payload->data)) {
+        if (!ng_sixlowpan_iphc_decode(pkt)) {
+            DEBUG("6lo: error on IPHC decoding\n");
+            ng_pktbuf_release(pkt);
+            return;
+        }
+        LL_SEARCH_SCALAR(pkt, payload, type, NG_NETTYPE_IPV6);
+
+    }
+#endif
+
     payload->type = NG_NETTYPE_IPV6;
 
-    entry = ng_netreg_lookup(NG_NETTYPE_IPV6, NG_NETREG_DEMUX_CTX_ALL);
-
-    if (entry == NULL) {
+    if (!ng_netapi_dispatch_receive(NG_NETTYPE_IPV6, NG_NETREG_DEMUX_CTX_ALL, pkt)) {
         DEBUG("ipv6: No receivers for this packet found\n");
         ng_pktbuf_release(pkt);
-        return;
-    }
-
-    ng_pktbuf_hold(pkt, ng_netreg_num(NG_NETTYPE_IPV6, NG_NETREG_DEMUX_CTX_ALL) - 1);
-
-    while (entry) {
-        DEBUG("6lo: Send receive command for %p to %" PRIu16 "\n",
-              (void *)pkt, entry->pid);
-        ng_netapi_receive(entry->pid, pkt);
-        entry = ng_netreg_getnext(entry);
     }
 }
 
-void _send(ng_pktsnip_t *pkt)
+static void _send(ng_pktsnip_t *pkt)
 {
     ng_netif_hdr_t *hdr;
     ng_pktsnip_t *ipv6, *sixlowpan;
@@ -130,6 +152,8 @@ void _send(ng_pktsnip_t *pkt)
     /* cppcheck-suppress unreadVariable */
     size_t payload_len, datagram_size;
     uint16_t max_frag_size;
+    /* cppcheck: disp is needed in other build paths on this level already */
+    /* cppcheck-suppress variableScope */
     uint8_t *disp;
 
     if ((pkt == NULL) || (pkt->size < sizeof(ng_netif_hdr_t))) {
@@ -151,6 +175,8 @@ void _send(ng_pktsnip_t *pkt)
      * length is the length of the IPv6 datagram + 6LoWPAN dispatches,
      * while the datagram size is the size of only the IPv6 datagram */
     payload_len = ng_pkt_len(ipv6);
+    /* cppcheck: datagram_size will be read by ng_sixlowpan_frag implementation */
+    /* cppcheck-suppress unreadVariable */
     datagram_size = (uint16_t)payload_len;
 
     /* use sixlowpan packet snip as temporary one */
@@ -163,7 +189,51 @@ void _send(ng_pktsnip_t *pkt)
     }
 
     pkt = sixlowpan;
+    iface = ng_sixlowpan_netif_get(hdr->if_pid);
 
+    if (iface == NULL) {
+        if (ng_netapi_get(hdr->if_pid, NETCONF_OPT_MAX_PACKET_SIZE,
+                          0, &max_frag_size, sizeof(max_frag_size)) < 0) {
+            /* if error we assume it works */
+            DEBUG("6lo: can not get max packet size from interface %"
+                  PRIkernel_pid "\n", hdr->if_pid);
+            max_frag_size = UINT16_MAX;
+        }
+
+        ng_sixlowpan_netif_add(hdr->if_pid, max_frag_size);
+        iface = ng_sixlowpan_netif_get(hdr->if_pid);
+    }
+    else {
+        max_frag_size = iface->max_frag_size;
+    }
+
+#ifdef MODULE_NG_SIXLOWPAN_IPHC
+    if (iface->iphc_enabled) {
+        if (!ng_sixlowpan_iphc_encode(pkt)) {
+            DEBUG("6lo: error on IPHC encoding\n");
+            ng_pktbuf_release(pkt);
+            return;
+        }
+    }
+    else {
+        DEBUG("6lo: Send uncompressed\n");
+
+        sixlowpan = ng_pktbuf_add(NULL, NULL, sizeof(uint8_t),
+                                  NG_NETTYPE_SIXLOWPAN);
+
+        if (sixlowpan == NULL) {
+            DEBUG("6lo: no space left in packet buffer\n");
+            ng_pktbuf_release(pkt);
+            return;
+        }
+
+        sixlowpan->next = ipv6;
+        pkt->next = sixlowpan;
+        disp = sixlowpan->data;
+        disp[0] = NG_SIXLOWPAN_UNCOMPRESSED;
+        payload_len++;
+    }
+#else
     DEBUG("6lo: Send uncompressed\n");
 
     sixlowpan = ng_pktbuf_add(NULL, NULL, sizeof(uint8_t), NG_NETTYPE_SIXLOWPAN);
@@ -179,23 +249,7 @@ void _send(ng_pktsnip_t *pkt)
     disp = sixlowpan->data;
     disp[0] = NG_SIXLOWPAN_UNCOMPRESSED;
     payload_len++;
-
-    iface = ng_sixlowpan_netif_get(hdr->if_pid);
-
-    if (iface == NULL) {
-        if (ng_netapi_get(hdr->if_pid, NETCONF_OPT_MAX_PACKET_SIZE,
-                          0, &max_frag_size, sizeof(max_frag_size)) < 0) {
-            /* if error we assume it works */
-            DEBUG("6lo: can not get max packet size from interface %"
-                  PRIkernel_pid "\n", hdr->if_pid);
-            max_frag_size = UINT16_MAX;
-        }
-
-        ng_sixlowpan_netif_add(hdr->if_pid, max_frag_size);
-    }
-    else {
-        max_frag_size = iface->max_frag_size;
-    }
+#endif
 
     DEBUG("6lo: max_frag_size = %" PRIu16 " for interface %"
           PRIkernel_pid "\n", max_frag_size, hdr->if_pid);

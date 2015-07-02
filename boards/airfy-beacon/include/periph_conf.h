@@ -17,8 +17,8 @@
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
  */
 
-#ifndef __PERIPH_CONF_H
-#define __PERIPH_CONF_H
+#ifndef PERIPH_CONF_H_
+#define PERIPH_CONF_H_
 
 #ifdef __cplusplus
  extern "C" {
@@ -93,9 +93,9 @@
 #define RTT_NUMOF           (1U)
 #define RTT_IRQ_PRIO        1
 
-#define RTT_DEV             NRF_RTC0
-#define RTT_IRQ             RTC0_IRQn
-#define RTT_ISR             isr_rtc0
+#define RTT_DEV             NRF_RTC1
+#define RTT_IRQ             RTC1_IRQn
+#define RTT_ISR             isr_rtc1
 #define RTT_MAX_VALUE       (0xffffff)
 #define RTT_FREQUENCY       (10)            /* in Hz */
 #define RTT_PRESCALER       (3275U)         /* run with 10 Hz */
@@ -124,50 +124,17 @@
 /** @} */
 
 /**
- * @name GPIO configuration
+ * @name Radio device configuration
+ *
+ * The radio is not guarded by a NUMOF define, as the radio is selected by its
+ * own module in the build system.
  * @{
  */
-#define GPIO_NUMOF          (16U)
-#define GPIO_0_EN           1
-#define GPIO_1_EN           1
-#define GPIO_2_EN           1
-#define GPIO_3_EN           1
-#define GPIO_4_EN           1
-#define GPIO_5_EN           1
-#define GPIO_6_EN           0 /* not usable */
-#define GPIO_7_EN           1
-#define GPIO_8_EN           1
-#define GPIO_9_EN           1
-#define GPIO_10_EN          1
-#define GPIO_11_EN          1
-#define GPIO_12_EN          1
-#define GPIO_13_EN          1
-#define GPIO_14_EN          1
-#define GPIO_15_EN          1
-#define GPIO_IRQ_PRIO       1
-
-/* GPIO pin configuration */
-#define GPIO_0_PIN          0
-#define GPIO_1_PIN          1
-#define GPIO_2_PIN          2
-#define GPIO_3_PIN          3
-#define GPIO_4_PIN          4
-#define GPIO_5_PIN          5
-#define GPIO_6_PIN          6 /* not usable */
-#define GPIO_7_PIN          7
-#define GPIO_8_PIN          8
-#define GPIO_9_PIN          9
-#define GPIO_10_PIN         10
-#define GPIO_11_PIN         11
-#define GPIO_12_PIN         12
-#define GPIO_13_PIN         13
-#define GPIO_14_PIN         14
-#define GPIO_15_PIN         15
-
+#define RADIO_IRQ_PRIO      1
 /** @} */
 
 #ifdef __cplusplus
 } /* end extern "C" */
 #endif
 
-#endif /* __PERIPH_CONF_H */
+#endif /* PERIPH_CONF_H_ */

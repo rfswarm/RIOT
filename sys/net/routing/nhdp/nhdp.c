@@ -47,6 +47,11 @@ static mutex_t send_rcv_mutex = MUTEX_INIT;
 static sockaddr6_t sa_bcast;
 static int sock_rcv;
 
+#if (NHDP_METRIC_NEEDS_TIMER)
+static vtimer_t metric_timer;
+static timex_t metric_interval;
+#endif
+
 /* Internal function prototypes */
 static void *_nhdp_runner(void *arg __attribute__((unused)));
 static void *_nhdp_receiver(void *arg __attribute__((unused)));
@@ -88,8 +93,16 @@ kernel_pid_t nhdp_start(void)
         sock_rcv = socket_base_socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 
         /* Start the NHDP thread */
-        nhdp_pid = thread_create(nhdp_stack, sizeof(nhdp_stack), PRIORITY_MAIN - 1,
+        nhdp_pid = thread_create(nhdp_stack, sizeof(nhdp_stack), THREAD_PRIORITY_MAIN - 1,
                                  CREATE_STACKTEST, _nhdp_runner, NULL, "NHDP");
+
+#if (NHDP_METRIC_NEEDS_TIMER)
+        /* Configure periodic timer message to refresh metric values */
+        if (nhdp_pid != KERNEL_PID_UNDEF) {
+            metric_interval = timex_from_uint64(DAT_REFRESH_INTERVAL * SEC_IN_USEC);
+            vtimer_set_msg(&metric_timer, metric_interval, nhdp_pid, NHDP_METRIC_TIMER, NULL);
+        }
+#endif
     }
 
     return nhdp_pid;
@@ -179,7 +192,7 @@ int nhdp_register_if(kernel_pid_t if_pid, uint8_t *addr, size_t addr_size, uint8
     helper_pid = if_pid;
 
     /* Start the receiving thread */
-    nhdp_rcv_pid = thread_create(nhdp_rcv_stack, sizeof(nhdp_rcv_stack), PRIORITY_MAIN - 1,
+    nhdp_rcv_pid = thread_create(nhdp_rcv_stack, sizeof(nhdp_rcv_stack), THREAD_PRIORITY_MAIN - 1,
                                  CREATE_STACKTEST, _nhdp_receiver, NULL, "nhdp_rcv_thread");
 
     /* Start sending periodic HELLO */
@@ -248,6 +261,18 @@ static void *_nhdp_runner(void *arg)
                 mutex_unlock(&send_rcv_mutex);
                 break;
 
+#if (NHDP_METRIC_NEEDS_TIMER)
+            case NHDP_METRIC_TIMER:
+                mutex_lock(&send_rcv_mutex);
+                /* Process necessary metric computations */
+                iib_process_metric_refresh();
+
+                /* Schedule next sending */
+                vtimer_set_msg(&metric_timer, metric_interval,
+                               thread_getpid(), NHDP_METRIC_TIMER, NULL);
+                mutex_unlock(&send_rcv_mutex);
+                break;
+#endif
             default:
                 break;
         }

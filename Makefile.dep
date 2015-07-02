@@ -48,6 +48,10 @@ ifneq (,$(filter sixlowpan,$(USEMODULE)))
   USEMODULE += vtimer
 endif
 
+ifneq (,$(filter ng_netif_default,$(USEMODULE)))
+  USEMODULE += ng_netif
+endif
+
 ifneq (,$(filter ng_netif,$(USEMODULE)))
   USEMODULE += ng_netbase
 endif
@@ -56,9 +60,56 @@ ifneq (,$(filter ng_nomac,$(USEMODULE)))
   USEMODULE += ng_netbase
 endif
 
+ifneq (,$(filter ng_at86rf2%,$(USEMODULE)))
+  USEMODULE += ng_at86rf2xx
+  USEMODULE += ng_ieee802154
+endif
+
+ifneq (,$(filter kw2xrf,$(USEMODULE)))
+  USEMODULE += ng_ieee802154
+endif
+
+ifneq (,$(filter xbee,$(USEMODULE)))
+  USEMODULE += ng_ieee802154
+endif
+
+ifneq (,$(filter ng_zep,$(USEMODULE)))
+  USEMODULE += hashes
+  USEMODULE += ng_ieee802154
+  USEMODULE += ng_udp
+  USEMODULE += random
+  USEMODULE += vtimer
+endif
+
+ifneq (,$(filter ng_ieee802154,$(USEMODULE)))
+  ifneq (,$(filter ng_ipv6, $(USEMODULE)))
+    USEMODULE += ng_sixlowpan
+  endif
+  ifneq (,$(filter ng_ipv6_router, $(USEMODULE)))
+    USEMODULE += ng_sixlowpan   # TODO: replace with ng_sixlowpan_router
+  endif
+  ifneq (,$(filter ng_ipv6_default, $(USEMODULE)))
+    USEMODULE += ng_sixlowpan_default
+  endif
+  ifneq (,$(filter ng_ipv6_router_default, $(USEMODULE)))
+    USEMODULE += ng_sixlowpan_default   # TODO: replace with ng_sixlowpan_router_default
+  endif
+endif
+
+ifneq (,$(filter ng_sixlowpan_default,$(USEMODULE)))
+  USEMODULE += ng_ipv6_default
+  USEMODULE += ng_sixlowpan
+  USEMODULE += ng_sixlowpan_frag
+endif
+
 ifneq (,$(filter ng_sixlowpan_frag,$(USEMODULE)))
   USEMODULE += ng_sixlowpan
   USEMODULE += vtimer
+endif
+
+ifneq (,$(filter ng_sixlowpan_iphc,$(USEMODULE)))
+  USEMODULE += ng_sixlowpan
+  USEMODULE += ng_sixlowpan_ctx
 endif
 
 ifneq (,$(filter ng_sixlowpan,$(USEMODULE)))
@@ -72,12 +123,32 @@ ifneq (,$(filter ng_sixlowpan_ctx,$(USEMODULE)))
   USEMODULE += vtimer
 endif
 
+ifneq (,$(filter ng_ipv6_default,$(USEMODULE)))
+  USEMODULE += ng_ipv6
+  USEMODULE += ng_icmpv6
+  USEMODULE += ng_ndp
+endif
+
+ifneq (,$(filter ng_ipv6_router_default,$(USEMODULE)))
+  USEMODULE += ng_ipv6_router
+  USEMODULE += ng_icmpv6
+  USEMODULE += ng_ndp
+endif
+
+ifneq (,$(filter ng_ndp,$(USEMODULE)))
+  USEMODULE += ng_icmpv6
+  USEMODULE += random
+  USEMODULE += timex
+  USEMODULE += vtimer
+endif
+
 ifneq (,$(filter ng_icmpv6_echo,$(USEMODULE)))
   USEMODULE += ng_icmpv6
   USEMODULE += ng_netbase
 endif
 
 ifneq (,$(filter ng_icmpv6,$(USEMODULE)))
+  USEMODULE += ng_inet_csum
   USEMODULE += ng_ipv6
 endif
 
@@ -86,12 +157,23 @@ ifneq (,$(filter ng_ipv6_hdr,$(USEMODULE)))
   USEMODULE += ng_pktbuf
 endif
 
+ifneq (,$(filter ng_rpl_srh,$(USEMODULE)))
+  USEMODULE += ng_ipv6_ext_rh
+endif
+
+ifneq (,$(filter ng_ipv6_ext_rh,$(USEMODULE)))
+  USEMODULE += ng_ipv6_ext
+endif
+
+ifneq (,$(filter ng_ipv6_ext,$(USEMODULE)))
+  USEMODULE += ng_ipv6
+endif
+
 ifneq (,$(filter ng_ipv6_router,$(USEMODULE)))
   USEMODULE += ng_ipv6
 endif
 
 ifneq (,$(filter ng_ipv6,$(USEMODULE)))
-  USEMODULE += ng_icmpv6
   USEMODULE += ng_inet_csum
   USEMODULE += ng_ipv6_addr
   USEMODULE += ng_ipv6_hdr
@@ -114,6 +196,14 @@ ifneq (,$(filter ng_udp,$(USEMODULE)))
   USEMODULE += ng_inet_csum
 endif
 
+ifneq (,$(filter ng_nettest,$(USEMODULE)))
+  USEMODULE += ng_netapi
+  USEMODULE += ng_netreg
+  USEMODULE += ng_netif
+  USEMODULE += ng_pktbuf
+  USEMODULE += vtimer
+endif
+
 ifneq (,$(filter ng_netbase,$(USEMODULE)))
   USEMODULE += ng_netapi
   USEMODULE += ng_netreg
@@ -125,6 +215,10 @@ endif
 ifneq (,$(filter ng_pktdump,$(USEMODULE)))
   USEMODULE += ng_pktbuf
   USEMODULE += od
+endif
+
+ifneq (,$(filter ng_slip,$(USEMODULE)))
+  USEMODULE += ng_netbase
 endif
 
 ifneq (,$(filter aodvv2,$(USEMODULE)))
@@ -221,6 +315,13 @@ ifneq (,$(filter oonf_common,$(USEMODULE)))
   USEMODULE += socket_base
 endif
 
-ifneq (,$(filter ng_at86rf2%,$(USEMODULE)))
-  USEMODULE += ng_at86rf2xx
+# if any log_* is used, also use LOG pseudomodule
+ifneq (,$(filter log_%,$(USEMODULE)))
+  USEMODULE += log
+endif
+
+ifneq (,$(filter cpp11-compat,$(USEMODULE)))
+  USEMODULE += vtimer
+  USEMODULE += timex
+  FEATURES_REQUIRED += cpp
 endif

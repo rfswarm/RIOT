@@ -24,6 +24,7 @@
 #include "net/ng_netbase.h"
 #include "net/ng_protnum.h"
 #include "net/ng_ipv6/hdr.h"
+#include "net/ng_ndp.h"
 #include "od.h"
 #include "utlist.h"
 
@@ -83,16 +84,32 @@ void ng_icmpv6_demux(kernel_pid_t iface, ng_pktsnip_t *pkt)
             break;
 #endif
 
-#ifdef MODULE_NG_NDP
         case NG_ICMPV6_RTR_SOL:
-        case NG_ICMPV6_RTR_ADV:
-        case NG_ICMPV6_NBR_SOL:
-        case NG_ICMPV6_NBR_ADV:
-        case NG_ICMPV6_REDIRECT:
-            DEBUG("icmpv6: neighbor discovery message received\n");
+            DEBUG("icmpv6: router solicitation received\n");
             /* TODO */
             break;
-#endif
+
+        case NG_ICMPV6_RTR_ADV:
+            DEBUG("icmpv6: router advertisement received\n");
+            /* TODO */
+            break;
+
+        case NG_ICMPV6_NBR_SOL:
+            DEBUG("icmpv6: neighbor solicitation received\n");
+            ng_ndp_nbr_sol_handle(iface, pkt, ipv6->data, (ng_ndp_nbr_sol_t *)hdr,
+                                  icmpv6->size);
+            break;
+
+        case NG_ICMPV6_NBR_ADV:
+            DEBUG("icmpv6: neighbor advertisement received\n");
+            ng_ndp_nbr_adv_handle(iface, pkt, ipv6->data, (ng_ndp_nbr_adv_t *)hdr,
+                                  icmpv6->size);
+            break;
+
+        case NG_ICMPV6_REDIRECT:
+            DEBUG("icmpv6: redirect message received\n");
+            /* TODO */
+            break;
 
 #ifdef MODULE_NG_RPL
         case NG_ICMPV6_RPL_CTRL:
@@ -118,7 +135,7 @@ void ng_icmpv6_demux(kernel_pid_t iface, ng_pktsnip_t *pkt)
     }
 
     /* ICMPv6 is not interested anymore so `- 1` */
-    ng_pktbuf_hold(pkt, ng_netreg_num(NG_NETTYPE_ICMPV6, hdr->type) - 1);
+    ng_pktbuf_hold(pkt, ng_netreg_num(NG_NETTYPE_ICMPV6, hdr->type));
 
     while (sendto != NULL) {
         ng_netapi_receive(sendto->pid, pkt);
@@ -126,12 +143,13 @@ void ng_icmpv6_demux(kernel_pid_t iface, ng_pktsnip_t *pkt)
     }
 }
 
-ng_pktsnip_t *ng_icmpv6_build(uint8_t type, uint8_t code, size_t size)
+ng_pktsnip_t *ng_icmpv6_build(ng_pktsnip_t *next, uint8_t type, uint8_t code,
+                              size_t size)
 {
     ng_pktsnip_t *pkt;
     ng_icmpv6_hdr_t *icmpv6;
 
-    pkt = ng_pktbuf_add(NULL, NULL, size, NG_NETTYPE_ICMPV6);
+    pkt = ng_pktbuf_add(next, NULL, size, NG_NETTYPE_ICMPV6);
 
     if (pkt == NULL) {
         DEBUG("icmpv6_echo: no space left in packet buffer\n");
@@ -143,6 +161,7 @@ ng_pktsnip_t *ng_icmpv6_build(uint8_t type, uint8_t code, size_t size)
     icmpv6 = (ng_icmpv6_hdr_t *)pkt->data;
     icmpv6->type = type;
     icmpv6->code = code;
+    icmpv6->csum.u16 = 0;
 
     return pkt;
 }

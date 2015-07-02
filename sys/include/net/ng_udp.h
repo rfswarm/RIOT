@@ -42,14 +42,14 @@ extern "C" {
  * @brief   Priority of the pktdump thread
  */
 #ifndef NG_UDP_PRIO
-#define NG_UDP_PRIO             (PRIORITY_MAIN - 2)
+#define NG_UDP_PRIO             (THREAD_PRIORITY_MAIN - 2)
 #endif
 
 /**
  * @brief   Default stack size to use for the UDP thread
  */
 #ifndef NG_UDP_STACK_SIZE
-#define NG_UDP_STACK_SIZE       (KERNEL_CONF_STACKSIZE_DEFAULT)
+#define NG_UDP_STACK_SIZE       (THREAD_STACKSIZE_DEFAULT)
 #endif
 
 /**
@@ -70,9 +70,9 @@ typedef struct __attribute__((packed)) {
  * @param[in] pseudo_hdr    Pointer to the network layer header
  *
  * @return  0 on success
- * @return  -EBADMSG if @p pkt is not of type NG_NETTYPE_UDP
- * @return  -EFAULT if @p pkt or @p pseudo_hdr is NULL
- * @return  -ENOENT if @p pseudo_hdr_type is not known
+ * @return  -EBADMSG if @p hdr is not of type NG_NETTYPE_UDP
+ * @return  -EFAULT if @p hdr or @p pseudo_hdr is NULL
+ * @return  -ENOENT if ng_pktsnip_t::type of @p pseudo_hdr is not known
  */
 int ng_udp_calc_csum(ng_pktsnip_t *hdr, ng_pktsnip_t *pseudo_hdr);
 
@@ -86,11 +86,19 @@ int ng_udp_calc_csum(ng_pktsnip_t *hdr, ng_pktsnip_t *pseudo_hdr);
  * @param[in] dst_len       Length of @p dst, must be 2
  *
  * @return  pointer to the newly created (and allocated) header
- * @return  NULL on error
+ * @return  NULL on `src == NULL`, `dst == NULL`, `src_len != 2`, `dst_len != 2`
+ *          or on allocation error
  */
 ng_pktsnip_t *ng_udp_hdr_build(ng_pktsnip_t *payload,
                                uint8_t *src, size_t src_len,
                                uint8_t *dst, size_t dst_len);
+
+/**
+ * @brief   Print the given UDP header to STDOUT
+ *
+ * @param[in] hdr           UDP header to print
+ */
+void ng_udp_hdr_print(ng_udp_hdr_t *hdr);
 
 /**
  * @brief   Initialize and start UDP

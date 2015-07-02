@@ -44,22 +44,28 @@ void ng_netif_init(void)
 
 int ng_netif_add(kernel_pid_t pid)
 {
+    kernel_pid_t *free_entry = NULL;
+
     for (int i = 0; i < NG_NETIF_NUMOF; i++) {
-        if (ifs[i] == pid) {    /* avoid duplicates */
+        if (ifs[i] == pid) {
             return 0;
         }
-        else if (ifs[i] == KERNEL_PID_UNDEF) {
-            ifs[i] = pid;
-
-            for (int j = 0; if_handler[j].add != NULL; j++) {
-                if_handler[j].add(pid);
-            }
-
-            return 0;
+        else if (ifs[i] == KERNEL_PID_UNDEF && !free_entry) {
+            free_entry = &ifs[i];
         }
     }
 
-    return -ENOMEM;
+    if (!free_entry) {
+        return -ENOMEM;
+    }
+
+    *free_entry = pid;
+
+    for (int j = 0; if_handler[j].add != NULL; j++) {
+        if_handler[j].add(pid);
+    }
+
+    return 0;
 }
 
 void ng_netif_remove(kernel_pid_t pid)
@@ -74,24 +80,22 @@ void ng_netif_remove(kernel_pid_t pid)
                 if_handler[j].remove(pid);
             }
 
-            break;
+            return;
+        }
+    }
+}
+
+size_t ng_netif_get(kernel_pid_t *netifs)
+{
+    size_t size = 0;
+
+    for (int i = 0; i < NG_NETIF_NUMOF; i++) {
+        if (ifs[i] != KERNEL_PID_UNDEF) {
+            netifs[size++] = ifs[i];
         }
     }
 
-    for (; (i < (NG_NETIF_NUMOF - 1)) && (ifs[i + 1] != KERNEL_PID_UNDEF); i++) {
-        ifs[i] = ifs[i + 1];
-    }
-
-    ifs[i] = KERNEL_PID_UNDEF;  /* set in case of i == (NG_NETIF_NUMOF - 1) */
-}
-
-kernel_pid_t *ng_netif_get(size_t *size)
-{
-    for (*size = 0;
-         (*size < NG_NETIF_NUMOF) && (ifs[*size] != KERNEL_PID_UNDEF);
-         (*size)++);
-
-    return ifs;
+    return size;
 }
 
 /** @} */

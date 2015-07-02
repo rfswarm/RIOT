@@ -12,12 +12,27 @@
  * @file
  */
 
+#include <inttypes.h>
 #include <stdio.h>
+#include "od.h"
 #include "net/ng_inet_csum.h"
+
+#define ENABLE_DEBUG    (0)
+#include "debug.h"
 
 uint16_t ng_inet_csum(uint16_t sum, const uint8_t *buf, uint16_t len)
 {
     uint32_t csum = sum;
+
+    DEBUG("inet_sum: sum = 0x%04" PRIx16 ", len = %" PRIu16, sum, len);
+#if ENABLE_DEBUG
+#ifdef MODULE_OD
+    DEBUG(", buf:\n");
+    od_hex_dump(buf, len, OD_WIDTH_DEFAULT);
+#else
+    DEBUG(", buf output only with od module\n");
+#endif
+#endif
 
     for (int i = 0; i < (len >> 1); buf += 2, i++) {
         csum += (*buf << 8) + *(buf + 1);   /* group bytes by 16-byte words
@@ -28,9 +43,14 @@ uint16_t ng_inet_csum(uint16_t sum, const uint8_t *buf, uint16_t len)
         csum += (*buf << 8);            /* add last byte as top half of 16-byte word */
     }
 
-    csum += csum >> 16;
+    while (csum >> 16) {
+        uint16_t carry = csum >> 16;
+        csum = (csum & 0xffff) + carry;
+    }
 
-    return (csum & 0xffff);
+    DEBUG("inet_sum: new sum = 0x%04" PRIx32 "\n", csum);
+
+    return csum;
 }
 
 /** @} */

@@ -31,7 +31,9 @@
 #define MAXCOUNT 100
 #define MAXDIFF 10000
 
-char timer_stack[KERNEL_CONF_STACKSIZE_MAIN*4];
+#define MSG_QUEUE_SIZE 16
+
+char timer_stack[THREAD_STACKSIZE_MAIN*4];
 
 struct timer_msg {
     vtimer_t timer;
@@ -56,8 +58,8 @@ void *timer_thread(void *arg)
     (void) arg;
     printf("This is thread %" PRIkernel_pid "\n", thread_getpid());
 
-    msg_t msgq[16];
-    msg_init_queue(msgq, sizeof(msgq));
+    msg_t msgq[MSG_QUEUE_SIZE];
+    msg_init_queue(msgq, MSG_QUEUE_SIZE);
 
     while (1) {
         msg_t m;
@@ -104,7 +106,7 @@ int main(void)
     kernel_pid_t pid = thread_create(
                   timer_stack,
                   sizeof(timer_stack),
-                  PRIORITY_MAIN - 1,
+                  THREAD_PRIORITY_MAIN - 1,
                   CREATE_STACKTEST,
                   timer_thread,
                   NULL,

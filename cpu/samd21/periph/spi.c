@@ -10,7 +10,7 @@
  * @ingroup     cpu_samd21
  * @{
  *
- * @file        spi.c
+ * @file
  * @brief       Low-level SPI driver implementation
  *
  * @author      Thomas Eichinger <thomas.eichinger@fu-berlin.de>
@@ -66,9 +66,19 @@ int spi_init_master(spi_t dev, spi_conf_t conf, spi_speed_t speed)
         f_baud = 1000000;
         break;
     case SPI_SPEED_5MHZ:
+#if CLOCK_CORECLOCK >= 5000000
+        f_baud = 5000000;
+        break;
+#else
         return -1;
+#endif
     case SPI_SPEED_10MHZ:
+#if CLOCK_CORECLOCK >= 10000000
+        f_baud = 10000000;
+        break;
+#else
         return -1;
+#endif
     }
     switch(conf)
     {
@@ -172,7 +182,9 @@ int spi_init_master(spi_t dev, spi_conf_t conf, spi_speed_t speed)
     spi_dev->CTRLA.reg |= SERCOM_SPI_CTRLA_MODE_SPI_MASTER;
     while (spi_dev->SYNCBUSY.reg);
 
-    spi_dev->BAUD.bit.BAUD = (uint8_t) (((uint32_t) SPI_0_F_REF) / (2 * f_baud) - 1); /* Syncronous mode*/
+    spi_dev->BAUD.bit.BAUD = (uint8_t) (((uint32_t)CLOCK_CORECLOCK) / (2 * f_baud) - 1); /* Syncronous mode*/
+
+
     spi_dev->CTRLA.reg |= (SERCOM_SPI_CTRLA_DOPO(dopo))
                           |  (SERCOM_SPI_CTRLA_DIPO(dipo))
                           |  (cpha << SERCOM_SPI_CTRLA_CPHA_Pos)
@@ -217,7 +229,7 @@ int spi_release(spi_t dev)
 int spi_transfer_byte(spi_t dev, char out, char *in)
 {
     SercomSpi* spi_dev = 0;
-    int transfered = 0;
+    char tmp;
 
     switch(dev)
     {
@@ -235,18 +247,15 @@ int spi_transfer_byte(spi_t dev, char out, char *in)
 
     while (!spi_dev->INTFLAG.bit.DRE); /* while data register is not empty*/
     spi_dev->DATA.bit.DATA = out;
-    transfered++;
+
+    while (!spi_dev->INTFLAG.bit.RXC); /* while receive is not complete*/
+    tmp = (char)spi_dev->DATA.bit.DATA;
+
     if (in != NULL)
     {
-        while (!spi_dev->INTFLAG.bit.RXC); /* while receive is not complete*/
-        *in = spi_dev->DATA.bit.DATA;
-        transfered++;
+        in[0] = tmp;
     }
-    else
-    {
-        spi_dev->DATA.reg;
-    }
-    return transfered;
+    return 1;
 }
 
 int spi_transfer_bytes(spi_t dev, char *out, char *in, unsigned int length)

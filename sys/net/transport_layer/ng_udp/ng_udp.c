@@ -44,7 +44,11 @@ static kernel_pid_t _pid = KERNEL_PID_UNDEF;
 /**
  * @brief   Allocate memory for the UDP thread's stack
  */
+#if ENABLE_DEBUG
+static char _stack[NG_UDP_STACK_SIZE + THREAD_EXTRA_STACKSIZE_PRINTF];
+#else
 static char _stack[NG_UDP_STACK_SIZE];
+#endif
 
 /**
  * @brief   Calculate the UDP checksum dependent on the network protocol
@@ -94,7 +98,6 @@ static void _receive(ng_pktsnip_t *pkt)
     ng_pktsnip_t *udp, *ipv6;
     ng_udp_hdr_t *hdr;
     uint32_t port;
-    ng_netreg_entry_t *sendto;
 
     /* mark UDP header */
     udp = ng_pktbuf_start_write(pkt);
@@ -110,6 +113,9 @@ static void _receive(ng_pktsnip_t *pkt)
         ng_pktbuf_release(pkt);
         return;
     }
+    /* mark payload as Type: UNDEF */
+    pkt->type = NG_NETTYPE_UNDEF;
+    /* get explicit pointer to UDP header */
     hdr = (ng_udp_hdr_t *)udp->data;
 
     LL_SEARCH_SCALAR(pkt, ipv6, type, NG_NETTYPE_IPV6);
@@ -125,16 +131,9 @@ static void _receive(ng_pktsnip_t *pkt)
     port = (uint32_t)byteorder_ntohs(hdr->dst_port);
 
     /* send payload to receivers */
-    sendto = ng_netreg_lookup(NG_NETTYPE_UDP, port);
-    if (sendto == NULL) {
+    if (!ng_netapi_dispatch_receive(NG_NETTYPE_UDP, port, pkt)) {
         DEBUG("udp: unable to forward packet as no one is interested in it\n");
         ng_pktbuf_release(pkt);
-        return;
-    }
-    ng_pktbuf_hold(pkt, ng_netreg_num(NG_NETTYPE_UDP, port) - 1);
-    while (sendto != NULL) {
-        ng_netapi_receive(sendto->pid, pkt);
-        sendto = ng_netreg_getnext(sendto);
     }
 }
 
@@ -142,7 +141,6 @@ static void _send(ng_pktsnip_t *pkt)
 {
     ng_udp_hdr_t *hdr;
     ng_pktsnip_t *udp_snip;
-    ng_netreg_entry_t *sendto;
 
     /* get udp snip and hdr */
     LL_SEARCH_SCALAR(pkt, udp_snip, type, NG_NETTYPE_UDP);
@@ -157,18 +155,9 @@ static void _send(ng_pktsnip_t *pkt)
     hdr->length = byteorder_htons(ng_pkt_len(udp_snip));
 
     /* and forward packet to the network layer */
-    sendto = ng_netreg_lookup(pkt->type, NG_NETREG_DEMUX_CTX_ALL);
-    /* throw away packet if no one is interested */
-    if (sendto == NULL) {
+    if (!ng_netapi_dispatch_send(pkt->type, NG_NETREG_DEMUX_CTX_ALL, pkt)) {
         DEBUG("udp: cannot send packet: network layer not found\n");
         ng_pktbuf_release(pkt);
-        return;
-    }
-    /* send packet to network layer */
-    ng_pktbuf_hold(pkt, ng_netreg_num(pkt->type, NG_NETREG_DEMUX_CTX_ALL) - 1);
-    while (sendto != NULL) {
-        ng_netapi_send(sendto->pid, pkt);
-        sendto = ng_netreg_getnext(sendto);
     }
 }
 
@@ -219,7 +208,7 @@ int ng_udp_calc_csum(ng_pktsnip_t *hdr, ng_pktsnip_t *pseudo_hdr)
 {
     uint16_t csum;
 
-    if (hdr == NULL || hdr->next == NULL) {
+    if ((hdr == NULL) || (pseudo_hdr == NULL)) {
         return -EFAULT;
     }
     if (hdr->type != NG_NETTYPE_UDP) {
@@ -236,7 +225,8 @@ int ng_udp_calc_csum(ng_pktsnip_t *hdr, ng_pktsnip_t *pseudo_hdr)
 
 ng_pktsnip_t *ng_udp_hdr_build(ng_pktsnip_t *payload,
                                uint8_t *src, size_t src_len,
-                               uint8_t *dst, size_t dst_len) {
+                               uint8_t *dst, size_t dst_len)
+{
     ng_pktsnip_t *res;
     ng_udp_hdr_t *hdr;
 
@@ -263,8 +253,8 @@ int ng_udp_init(void)
     /* check if thread is already running */
     if (_pid == KERNEL_PID_UNDEF) {
         /* start UDP thread */
-        _pid = thread_create(_stack, sizeof(_stack), NG_UDP_PRIO, 0,
-                             _event_loop, NULL, "udp");
+        _pid = thread_create(_stack, sizeof(_stack), NG_UDP_PRIO,
+                             CREATE_STACKTEST, _event_loop, NULL, "udp");
     }
     return _pid;
 }

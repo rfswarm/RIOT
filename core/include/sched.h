@@ -71,7 +71,7 @@
  *
  * @{
  *
- * @file        sched.h
+ * @file
  * @brief       Scheduler API definition
  *
  * @author      Kaspar Schleiser <kaspar@schleiser.de>
@@ -85,6 +85,7 @@
 #include "tcb.h"
 #include "attributes.h"
 #include "kernel_types.h"
+#include "native_sched.h"
 
 #ifdef __cplusplus
  extern "C" {

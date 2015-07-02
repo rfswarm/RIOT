@@ -25,6 +25,7 @@
 #include "kernel_types.h"
 
 #include "net/ng_sixlowpan/frag.h"
+#include "net/ng_sixlowpan/iphc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,14 +35,14 @@ extern "C" {
  * @brief   Default stack size to use for the 6LoWPAN thread
  */
 #ifndef NG_SIXLOWPAN_STACK_SIZE
-#define NG_SIXLOWPAN_STACK_SIZE  (KERNEL_CONF_STACKSIZE_DEFAULT)
+#define NG_SIXLOWPAN_STACK_SIZE  (THREAD_STACKSIZE_DEFAULT)
 #endif
 
 /**
  * @brief   Default priority for the 6LoWPAN thread
  */
 #ifndef NG_SIXLOWPAN_PRIO
-#define NG_SIXLOWPAN_PRIO   (PRIORITY_MAIN - 4)
+#define NG_SIXLOWPAN_PRIO   (THREAD_PRIORITY_MAIN - 4)
 #endif
 
 /**
@@ -76,6 +77,14 @@ static inline bool ng_sixlowpan_nalp(uint8_t disp)
  * @return  -EOVERFLOW, if there are too many threads running already
  */
 kernel_pid_t ng_sixlowpan_init(void);
+
+/**
+ * @brief   Prints 6LoWPAN dispatch to stdout.
+ *
+ * @param[in] data  A 6LoWPAN frame.
+ * @param[in] size  Size of @p data.
+ */
+void ng_sixlowpan_print(uint8_t *data, size_t size);
 
 #ifdef __cplusplus
 }

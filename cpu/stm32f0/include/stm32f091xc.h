@@ -84,7 +84,7 @@ typedef enum
 /******  Cortex-M0 Processor Exceptions Numbers **************************************************************/
   NonMaskableInt_IRQn         = -14,    /*!< 2 Non Maskable Interrupt                                        */
   HardFault_IRQn              = -13,    /*!< 3 Cortex-M0 Hard Fault Interrupt                                */
-  SVC_IRQn                    = -5,     /*!< 11 Cortex-M0 SV Call Interrupt                                  */
+  SVCall_IRQn                 = -5,     /*!< 11 Cortex-M0 SV Call Interrupt                                  */
   PendSV_IRQn                 = -2,     /*!< 14 Cortex-M0 Pend SV Interrupt                                  */
   SysTick_IRQn                = -1,     /*!< 15 Cortex-M0 System Tick Interrupt                              */
 
@@ -402,7 +402,7 @@ typedef struct
        uint32_t RESERVED;    /*!< Reserved,                                                                  0x04 */
   __IO uint32_t EXTICR[4];   /*!< SYSCFG external interrupt configuration register,     Address offset: 0x14-0x08 */
   __IO uint32_t CFGR2;       /*!< SYSCFG configuration register 2,                           Address offset: 0x18 */
-       uint32_t RESERVED1[25];    /*!< Reserved + COMP,							                                         0x1C */
+       uint32_t RESERVED1[25];    /*!< Reserved + COMP,                                                      0x1C */
   __IO uint32_t IT_LINE_SR[32]; /*!< SYSCFG configuration IT_LINE register,                  Address offset: 0x80 */
 
 }SYSCFG_TypeDef;

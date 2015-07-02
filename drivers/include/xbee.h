@@ -30,6 +30,7 @@
 #include "periph/uart.h"
 #include "periph/gpio.h"
 #include "net/ng_netbase.h"
+#include "net/ng_ieee802154.h"
 
 #ifdef __cplusplus
  extern "C" {
@@ -60,11 +61,6 @@
 #endif
 
 /**
- * @brief   Default short address used after initialization
- */
-#define XBEE_DEFAULT_SHORT_ADDR     (0x0230)
-
-/**
  * @brief   Default PAN ID used after initialization
  */
 #define XBEE_DEFAULT_PANID          (0x0023)
@@ -73,6 +69,19 @@
  * @brief   Default channel used after initialization
  */
 #define XBEE_DEFAULT_CHANNEL        (17U)
+
+/**
+ * @name    Address flags
+ * @{
+ */
+/**
+ * @brief   Use long addresses if not otherwise defined when set, use short
+ *          addresses when unset.
+ */
+#define XBEE_ADDR_FLAGS_LONG              (0x80)
+/**
+ * @}
+ */
 
 /**
  * @brief   States of the internal FSM for handling incoming UART frames
@@ -108,8 +117,9 @@ typedef struct {
     gpio_t sleep_pin;                   /**< GPIO pin connected to SLEEP */
     ng_nettype_t proto;                 /**< protocol the interface speaks */
     uint8_t options;                    /**< options field */
+    uint8_t addr_flags;                 /**< address flags as defined above */
     uint8_t addr_short[2];              /**< onw 802.15.4 short address */
-    uint8_t addr_long[8];               /**< own 802.15.4 long address */
+    eui64_t addr_long;                  /**< own 802.15.4 long address */
     /* general variables for the UART RX state machine */
     xbee_rx_state_t int_state;          /**< current state if the UART RX FSM */
     uint16_t int_size;                  /**< temporary space for parsing the
@@ -144,9 +154,9 @@ extern const ng_netdev_driver_t xbee_driver;
  * @param[in]  uart         UART interfaced the device is connected to
  * @param[in]  baudrate     baudrate to use
  * @param[in]  sleep_pin    GPIO pin that is connected to the SLEEP pin, set to
- *                          GPIO_NUMOF if not used
+ *                          GPIO_UNDEF if not used
  * @param[in]  status_pin   GPIO pin that is connected to the STATUS pin, set to
- *                          GPIO_NUMOF if not used
+ *                          GPIO_UNDEF if not used
  *
  * @return                  0 on success
  * @return                  -ENODEV on invalid device descriptor
@@ -154,6 +164,18 @@ extern const ng_netdev_driver_t xbee_driver;
  */
 int xbee_init(xbee_t *dev, uart_t uart, uint32_t baudrate,
               gpio_t sleep_pin, gpio_t status_pin);
+
+/**
+ * @brief   auto_init struct holding Xbee device initalization params
+ */
+typedef struct xbee_params {
+    uart_t uart;            /**< UART interfaced the device is connected to */
+    uint32_t baudrate;      /**< baudrate to use */
+    gpio_t sleep_pin;       /**< GPIO pin that is connected to the SLEEP pin
+                                 set to GPIO_UNDEF if not used */
+    gpio_t status_pin;      /**< GPIO pin that is connected to the STATUS pin
+                                 set to GPIO_UNDEF if not used */
+} xbee_params_t;
 
 #ifdef __cplusplus
 }

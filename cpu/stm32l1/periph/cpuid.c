@@ -10,14 +10,13 @@
  * @addtogroup  driver_periph
  * @{
  *
- * @file        cpuid.c
+ * @file
  * @brief       Low-level CPUID driver implementation
  *
  * @author      Thomas Eichinger <thomas.eichinger@fu-berlin.de>
  */
 
 #include <string.h>
-#include "cpu-conf.h"
 
 #include "periph/cpuid.h"
 

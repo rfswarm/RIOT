@@ -11,7 +11,7 @@
  * @ingroup     cpu_stm32f1
  * @{
  *
- * @file        cpu.c
+ * @file
  * @brief       Implementation of the kernel cpu functions
  *
  * @author      Stefan Pfeiffer <stefan.pfeiffer@fu-berlin.de>
@@ -29,10 +29,8 @@ static void clk_init(void);
 
 void cpu_init(void)
 {
-    /* set PendSV priority to the lowest possible priority */
-    NVIC_SetPriority(PendSV_IRQn, 0xff);
-    /* configure the vector table location to internal flash */
-    SCB->VTOR = FLASH_BASE;
+    /* initialize the Cortex-M core */
+    cortexm_init();
     /* initialize system clocks */
     clk_init();
 }

@@ -66,6 +66,7 @@ void at86rf231_init(kernel_pid_t tpid)
 
 int at86rf231_initialize(netdev_t *dev)
 {
+    (void)dev;
     at86rf231_gpio_spi_interrupts_init();
 
     at86rf231_reset();
@@ -234,6 +235,7 @@ int at86rf231_rem_raw_recv_callback(netdev_t *dev,
                                     netdev_802154_raw_packet_cb_t recv_cb)
 {
     (void)dev;
+    (void)recv_cb;
 
     at86rf231_raw_packet_cb = NULL;
     return 0;
@@ -256,6 +258,7 @@ int at86rf231_rem_data_recv_callback(netdev_t *dev,
                                      netdev_rcv_data_cb_t recv_cb)
 {
     (void)dev;
+    (void)recv_cb;
 
     at86rf231_data_packet_cb = NULL;
     return 0;
@@ -417,11 +420,11 @@ void at86rf231_gpio_spi_interrupts_init(void)
     /* IRQ0 */
     gpio_init_int(AT86RF231_INT, GPIO_NOPULL, GPIO_RISING, (gpio_cb_t)at86rf231_rx_irq, NULL);
     /* CS */
-    gpio_init_out(AT86RF231_CS, GPIO_NOPULL);
+    gpio_init(AT86RF231_CS, GPIO_DIR_OUT, GPIO_NOPULL);
     /* SLEEP */
-    gpio_init_out(AT86RF231_SLEEP, GPIO_NOPULL);
+    gpio_init(AT86RF231_SLEEP, GPIO_DIR_OUT, GPIO_NOPULL);
     /* RESET */
-    gpio_init_out(AT86RF231_RESET, GPIO_NOPULL);
+    gpio_init(AT86RF231_RESET, GPIO_DIR_OUT, GPIO_NOPULL);
 }
 
 void at86rf231_reset(void)
